@@ -1,3 +1,4 @@
+import type * as THREE from 'three';
 import { ISpawnPoint } from '../interfaces/ISpawnPoint';
 import { VehicleSpawnPoint } from './VehicleSpawnPoint';
 import { CharacterSpawnPoint } from './CharacterSpawnPoint';
@@ -100,7 +101,7 @@ export class Scenario
 		{
 			this.world.launchScenario(this.id);
 		};
-		this.world.scenarioGUIFolder.add(this.world.params, this.name);
+		this.world.scenarioGUIFolder?.add(this.world.params, this.name);
 	}
 
 	public launch(loadingManager: LoadingManager, world: World): void

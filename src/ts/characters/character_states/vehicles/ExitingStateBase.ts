@@ -8,7 +8,7 @@ import
 import { Character } from '../../Character';
 import { VehicleSeat } from '../../../vehicles/VehicleSeat';
 import { IControllable } from '../../../interfaces/IControllable';
-import { Vehicle } from 'src/ts/vehicles/Vehicle';
+import { Vehicle } from '../../../vehicles/Vehicle';
 
 export abstract class ExitingStateBase extends CharacterStateBase
 {

@@ -20,15 +20,17 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "paths": {
-      "cannon": ["./src/lib/cannon/cannon.js"]
+      "cannon": ["./src/lib/cannon/cannon.d.ts"]
     },
     "types": ["vitest/globals"]
   },
   "include": [
-    "src/App.tsx",
-    "src/App.test.tsx",
-    "src/main.tsx",
+    "src/*.tsx",
+    "src/game/**/*.ts",
+    "src/game/**/*.tsx",
+    "src/**/*.test.ts",
     "src/test/setup.ts",
-    "src/vite-env.d.ts"
+    "src/vite-env.d.ts",
+    "src/lib/cannon/cannon.d.ts"
   ]
 }

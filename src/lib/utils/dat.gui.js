@@ -2607,4 +2607,3 @@
     return index;
 
 })));
-//# sourceMappingURL=dat.gui.js.map

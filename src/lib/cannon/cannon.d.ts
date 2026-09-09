@@ -1138,6 +1138,15 @@ declare module CANNON {
 
     }
 
+    export class Trimesh extends Shape {
+        constructor(vertices: number[], indices: number[]);
+        vertices: Float32Array;
+        indices: Int16Array;
+        scale: Vec3;
+        setScale(scale: Vec3): void;
+        getTriangleVertices(index: number, a: Vec3, b: Vec3, c: Vec3): void;
+    }
+
     export class World extends EventTarget {
         iterations: number;
         dt: number;

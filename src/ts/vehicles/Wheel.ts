@@ -1,4 +1,4 @@
-import { WheelInfo } from 'cannon';
+import type * as THREE from 'three';
 
 export class Wheel
 {

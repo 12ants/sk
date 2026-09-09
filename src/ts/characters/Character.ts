@@ -38,7 +38,7 @@ export class Character extends THREE.Object3D implements IWorldEntity
 	public modelContainer: THREE.Group;
 	public materials: THREE.Material[] = [];
 	public mixer: THREE.AnimationMixer;
-	public animations: any[];
+	public declare animations: THREE.AnimationClip[];
 
 	// Movement
 	public acceleration: THREE.Vector3 = new THREE.Vector3();

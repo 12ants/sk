@@ -1,3 +1,5 @@
+import type * as THREE from 'three';
+
 export class SimulationFrameVector {
 	public position: THREE.Vector3;
 	public velocity: THREE.Vector3;

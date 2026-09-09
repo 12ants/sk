@@ -3,7 +3,7 @@ import
 	CharacterStateBase,
 } from '../_stateLibrary';
 import { Character } from '../../Character';
-import { VehicleSeat } from 'src/ts/vehicles/VehicleSeat';
+import { VehicleSeat } from '../../../vehicles/VehicleSeat';
 import { CloseVehicleDoorInside } from './CloseVehicleDoorInside';
 import { SeatType } from '../../../enums/SeatType';
 import { SwitchingSeats } from './SwitchingSeats';

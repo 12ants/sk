@@ -1,4 +1,4 @@
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { LoadingTrackerEntry } from './LoadingTrackerEntry';
 import { UIManager } from './UIManager';
 import { Scenario } from '../world/Scenario';
@@ -27,16 +27,19 @@ export class LoadingManager
 
 	public loadGLTF(path: string, onLoadingFinished: (gltf: any) => void): void
 	{
+		if (this.world.isDisposed) return;
 		let trackerEntry = this.addLoadingEntry(path);
 
 		this.gltfLoader.load(path,
 		(gltf)  =>
 		{
+			if (this.world.isDisposed) return;
 			onLoadingFinished(gltf);
 			this.doneLoading(trackerEntry);
 		},
 		(xhr) =>
 		{
+			if (this.world.isDisposed) return;
 			if ( xhr.lengthComputable )
 			{
 				trackerEntry.progress = xhr.loaded / xhr.total;
@@ -44,6 +47,7 @@ export class LoadingManager
 		},
 		(error)  =>
 		{
+			if (this.world.isDisposed) return;
 			console.error(error);
 			gameUiStore.setError(`${path} could not be loaded`);
 		});
@@ -59,6 +63,7 @@ export class LoadingManager
 
 	public doneLoading(trackerEntry: LoadingTrackerEntry): void
 	{
+		if (this.world.isDisposed) return;
 		trackerEntry.finished = true;
 		trackerEntry.progress = 1;
 

@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/swift502/Sketchbook",
   "devDependencies": {
+    "@react-three/test-renderer": "9.1.1",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@types/jquery": "^3.5.5",
@@ -27,6 +28,7 @@
     "@types/node": "24.10.1",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "6.1.1",
     "jsdom": "30.0.1",
     "typescript": "7.0.2",

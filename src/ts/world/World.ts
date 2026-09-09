@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon';
 import Swal from 'sweetalert2';
-import * as $ from 'jquery';
+import $ from 'jquery';
 
 import { CameraOperator } from '../core/CameraOperator';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
-import { FXAAShader  } from 'three/examples/jsm/shaders/FXAAShader';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAShader  } from 'three/examples/jsm/shaders/FXAAShader.js';
 
 import { Detector } from '../../lib/utils/Detector';
 import { Stats } from '../../lib/utils/Stats';
@@ -31,13 +31,23 @@ import { Vehicle } from '../vehicles/Vehicle';
 import { Scenario } from './Scenario';
 import { Sky } from './Sky';
 import { Ocean } from './Ocean';
+import type { WorldRuntimeDependencies } from '../../game/runtime/types';
+import { gameUiStore, type ControlRow } from '../../game/ui/gameUiStore';
+
+export type WorldOptions = {
+	worldScenePath?: string;
+	runtime?: WorldRuntimeDependencies;
+};
 
 export class World
 {
 	public renderer: THREE.WebGLRenderer;
 	public camera: THREE.PerspectiveCamera;
+	public canvas: HTMLCanvasElement;
+	public readonly externallyManaged: boolean;
+	public isDisposed: boolean = false;
 	public composer: any;
-	public stats: Stats;
+	public stats: ReturnType<typeof Stats>;
 	public graphicsWorld: THREE.Scene;
 	public sky: Sky;
 	public physicsWorld: CANNON.World;
@@ -56,7 +66,7 @@ export class World
 	public cameraOperator: CameraOperator;
 	public timeScaleTarget: number = 1;
 	public console: InfoStack;
-	public cannonDebugRenderer: CannonDebugRenderer;
+	public cannonDebugRenderer: typeof CannonDebugRenderer.prototype;
 	public scenarios: Scenario[] = [];
 	public characters: Character[] = [];
 	public vehicles: Vehicle[] = [];
@@ -65,13 +75,22 @@ export class World
 	public updatables: IUpdatable[] = [];
 
 	private lastScenarioID: string;
+	private animationFrameId?: number;
+	private onWindowResize?: () => void;
+	private gui?: any;
+	private ownedDomNodes: Element[] = [];
 
-	constructor(worldScenePath?: any)
+	constructor(options?: WorldOptions);
+	/** @deprecated Supply WorldOptions with an R3F runtime in React applications. */
+	constructor(worldScenePath?: string);
+	constructor(options: WorldOptions | string = {})
 	{
+		const { worldScenePath, runtime } = typeof options === 'string' ? { worldScenePath: options } : options;
+		this.externallyManaged = runtime !== undefined;
 		const scope = this;
 
 		// WebGL not supported
-		if (!Detector.webgl)
+		if (!this.externallyManaged && !Detector.webgl)
 		{
 			Swal.fire({
 				icon: 'warning',
@@ -84,44 +103,39 @@ export class World
 		}
 
 		// Renderer
-		this.renderer = new THREE.WebGLRenderer();
-		this.renderer.setPixelRatio(window.devicePixelRatio);
-		this.renderer.setSize(window.innerWidth, window.innerHeight);
+		this.renderer = runtime?.renderer ?? new THREE.WebGLRenderer();
+		this.camera = runtime?.camera ?? new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1010);
+		this.canvas = runtime?.canvas ?? this.renderer.domElement;
 		this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 		this.renderer.toneMappingExposure = 1.0;
 		this.renderer.shadowMap.enabled = true;
 		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-		this.generateHTML();
-
-		// Auto window resize
-		function onWindowResize(): void
-		{
-			scope.camera.aspect = window.innerWidth / window.innerHeight;
-			scope.camera.updateProjectionMatrix();
-			scope.renderer.setSize(window.innerWidth, window.innerHeight);
-			fxaaPass.uniforms['resolution'].value.set(1 / (window.innerWidth * pixelRatio), 1 / (window.innerHeight * pixelRatio));
-			scope.composer.setSize(window.innerWidth * pixelRatio, window.innerHeight * pixelRatio);
-		}
-		window.addEventListener('resize', onWindowResize, false);
-
 		// Three.js scene
 		this.graphicsWorld = new THREE.Scene();
-		this.camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1010);
-
-		// Passes
-		let renderPass = new RenderPass( this.graphicsWorld, this.camera );
-		let fxaaPass = new ShaderPass( FXAAShader );
-
-		// FXAA
-		let pixelRatio = this.renderer.getPixelRatio();
-		fxaaPass.material['uniforms'].resolution.value.x = 1 / ( window.innerWidth * pixelRatio );
-		fxaaPass.material['uniforms'].resolution.value.y = 1 / ( window.innerHeight * pixelRatio );
-
-		// Composer
-		this.composer = new EffectComposer( this.renderer );
-		this.composer.addPass( renderPass );
-		this.composer.addPass( fxaaPass );
+		if (!this.externallyManaged)
+		{
+			this.renderer.setPixelRatio(window.devicePixelRatio);
+			this.renderer.setSize(window.innerWidth, window.innerHeight);
+			this.generateHTML();
+			const renderPass = new RenderPass(this.graphicsWorld, this.camera);
+			const fxaaPass = new ShaderPass(FXAAShader);
+			const pixelRatio = this.renderer.getPixelRatio();
+			fxaaPass.uniforms.resolution.value.set(1 / (window.innerWidth * pixelRatio), 1 / (window.innerHeight * pixelRatio));
+			this.composer = new EffectComposer(this.renderer);
+			this.composer.addPass(renderPass);
+			this.composer.addPass(fxaaPass);
+			this.onWindowResize = () => {
+				this.camera.aspect = window.innerWidth / window.innerHeight;
+				this.camera.updateProjectionMatrix();
+				this.renderer.setSize(window.innerWidth, window.innerHeight);
+				fxaaPass.uniforms.resolution.value.set(1 / (window.innerWidth * pixelRatio), 1 / (window.innerHeight * pixelRatio));
+				this.composer.setSize(window.innerWidth, window.innerHeight);
+			};
+			window.addEventListener('resize', this.onWindowResize, false);
+			this.clock = new THREE.Clock();
+			this.stats = Stats();
+		}
 
 		// Physics
 		this.physicsWorld = new CANNON.World();
@@ -136,67 +150,141 @@ export class World
 		this.physicsMaxPrediction = this.physicsFrameRate;
 
 		// RenderLoop
-		this.clock = new THREE.Clock();
 		this.renderDelta = 0;
 		this.logicDelta = 0;
 		this.sinceLastFrame = 0;
 		this.justRendered = false;
 
-		// Stats (FPS, Frame time, Memory)
-		this.stats = Stats();
-		// Create right panel GUI
-		this.createParamsGUI(scope);
+		this.params = {
+			Pointer_Lock: true,
+			Mouse_Sensitivity: 0.3,
+			Time_Scale: 1,
+			Shadows: true,
+			FXAA: true,
+			Debug_Physics: false,
+			Debug_FPS: false,
+			Sun_Elevation: 50,
+			Sun_Rotation: 145,
+		};
+		if (!this.externallyManaged) this.createParamsGUI(scope);
 
 		// Initialization
-		this.inputManager = new InputManager(this, this.renderer.domElement);
-		this.cameraOperator = new CameraOperator(this, this.camera, this.params.Mouse_Sensitivity);
-		this.sky = new Sky(this);
-		
-		// Load scene if path is supplied
-		if (worldScenePath !== undefined)
+		try
 		{
-			let loadingManager = new LoadingManager(this);
-			loadingManager.onFinishedCallback = () =>
-			{
-				this.update(1, 1);
-				this.setTimeScale(1);
-	
-				Swal.fire({
-					title: 'Welcome to Sketchbook!',
-					text: 'Feel free to explore the world and interact with available vehicles. There are also various scenarios ready to launch from the right panel.',
-					footer: '<a href="https://github.com/swift502/Sketchbook" target="_blank">GitHub page</a><a href="https://discord.gg/fGuEqCe" target="_blank">Discord server</a>',
-					confirmButtonText: 'Okay',
-					buttonsStyling: false,
-					onClose: () => {
-						UIManager.setUserInterfaceVisible(true);
-					}
-				});
-			};
-			loadingManager.loadGLTF(worldScenePath, (gltf) =>
-				{
-					this.loadScene(loadingManager, gltf);
-				}
-			);
-		}
-		else
-		{
-			UIManager.setUserInterfaceVisible(true);
-			UIManager.setLoadingScreenVisible(false);
-			Swal.fire({
-				icon: 'success',
-				title: 'Hello world!',
-				text: 'Empty Sketchbook world was succesfully initialized. Enjoy the blueness of the sky.',
-				buttonsStyling: false
-			});
-		}
+			this.inputManager = new InputManager(this, this.canvas);
+			this.cameraOperator = new CameraOperator(this, this.camera, this.params.Mouse_Sensitivity);
+			this.sky = new Sky(this);
 
-		this.render(this);
+			// Load scene if path is supplied
+			if (worldScenePath !== undefined)
+			{
+				let loadingManager = new LoadingManager(this);
+				loadingManager.onFinishedCallback = () =>
+				{
+					if (this.isDisposed) return;
+					this.update(1, 1);
+					this.setTimeScale(1);
+					if (this.externallyManaged)
+					{
+						UIManager.setUserInterfaceVisible(true);
+						return;
+					}
+
+					Swal.fire({
+						title: 'Welcome to Sketchbook!',
+						text: 'Feel free to explore the world and interact with available vehicles. There are also various scenarios ready to launch from the right panel.',
+						footer: '<a href="https://github.com/swift502/Sketchbook" target="_blank">GitHub page</a><a href="https://discord.gg/fGuEqCe" target="_blank">Discord server</a>',
+						confirmButtonText: 'Okay',
+						buttonsStyling: false,
+						onClose: () => {
+							UIManager.setUserInterfaceVisible(true);
+						}
+					});
+				};
+				loadingManager.loadGLTF(worldScenePath, (gltf) =>
+					{
+						this.loadScene(loadingManager, gltf);
+					}
+				);
+			}
+			else
+			{
+				UIManager.setUserInterfaceVisible(true);
+				UIManager.setLoadingScreenVisible(false);
+				if (!this.externallyManaged) Swal.fire({
+					icon: 'success',
+					title: 'Hello world!',
+					text: 'Empty Sketchbook world was succesfully initialized. Enjoy the blueness of the sky.',
+					buttonsStyling: false
+				});
+			}
+
+			if (!this.externallyManaged) this.render(this);
+		}
+		catch (error)
+		{
+			this.dispose();
+			throw error;
+		}
+	}
+
+	public tick(unscaledTimeStep: number): void
+	{
+		if (this.isDisposed) return;
+		const timeStep = Math.min(unscaledTimeStep * this.params.Time_Scale, 1 / 30);
+		this.update(timeStep, unscaledTimeStep);
+	}
+
+	public dispose(): void
+	{
+		if (this.isDisposed) return;
+		this.isDisposed = true;
+		this.inputManager?.dispose();
+		if (this.animationFrameId !== undefined) cancelAnimationFrame(this.animationFrameId);
+		if (this.onWindowResize) window.removeEventListener('resize', this.onWindowResize, false);
+		this.cannonDebugRenderer?.dispose();
+		this.cannonDebugRenderer = undefined;
+
+		// World owns its scene resources; the renderer and canvas remain with R3F.
+		const resources = new Set<{ dispose(): void }>();
+		this.graphicsWorld.traverse((object: any) => {
+			if (object.geometry) resources.add(object.geometry);
+			if (object.skeleton) resources.add(object.skeleton);
+			if (object.shadow) resources.add(object.shadow);
+			const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+			for (const material of materials) {
+				resources.add(material);
+				for (const value of Object.values(material) as any[]) if (value?.isTexture) resources.add(value);
+				for (const uniform of Object.values(material.uniforms ?? {}) as any[]) if (uniform.value?.isTexture) resources.add(uniform.value);
+			}
+		});
+		this.clearEntities();
+		this.sky?.csm.remove();
+		this.sky?.csm.dispose();
+		resources.forEach((resource) => resource.dispose());
+		this.graphicsWorld.clear();
+		this.graphicsWorld.removeFromParent();
+		for (const body of [...this.physicsWorld.bodies]) this.physicsWorld.remove(body);
+		this.updatables.length = 0;
+		this.paths.length = 0;
+		this.scenarios.length = 0;
+		this.gui?.destroy();
+		this.stats?.dom?.remove();
+		this.ownedDomNodes.forEach((element) => element.remove());
+		this.ownedDomNodes.length = 0;
+		if (!this.externallyManaged)
+		{
+			this.composer?.passes.forEach((pass) => pass.dispose?.());
+			this.composer?.dispose();
+			this.renderer.dispose();
+		}
 	}
 
 	// Update
 	// Handles all logic updates.
 	public update(timeStep: number, unscaledTimeStep: number): void
 	{
+		if (this.isDisposed) return;
 		this.updatePhysics(timeStep);
 
 		// Update registred objects
@@ -265,9 +353,10 @@ export class World
 	 */
 	public render(world: World): void
 	{
+		if (this.externallyManaged || this.isDisposed) return;
 		this.requestDelta = this.clock.getDelta();
 
-		requestAnimationFrame(() =>
+		this.animationFrameId = requestAnimationFrame(() =>
 		{
 			world.render(world);
 		});
@@ -308,6 +397,7 @@ export class World
 
 	public add(worldEntity: IWorldEntity): void
 	{
+		if (this.isDisposed) return;
 		worldEntity.addToWorld(this);
 		this.registerUpdatable(worldEntity);
 	}
@@ -331,6 +421,7 @@ export class World
 
 	public loadScene(loadingManager: LoadingManager, gltf: any): void
 	{
+		if (this.isDisposed) return;
 		gltf.scene.traverse((child) => {
 			if (child.hasOwnProperty('userData'))
 			{
@@ -403,6 +494,7 @@ export class World
 	
 	public launchScenario(scenarioID: string, loadingManager?: LoadingManager): void
 	{
+		if (this.isDisposed) return;
 		this.lastScenarioID = scenarioID;
 
 		this.clearEntities();
@@ -461,8 +553,10 @@ export class World
 		}
 	}
 
-	public updateControls(controls: any): void
+	public updateControls(controls: ControlRow[]): void
 	{
+		gameUiStore.setControls(controls);
+		if (this.externallyManaged) return;
 		let html = '';
 		html += '<h2 class="controls-title">Controls:</h2>';
 
@@ -482,6 +576,7 @@ export class World
 
 	private generateHTML(): void
 	{
+		const existingNodes = new Set([...document.head.children, ...document.body.children]);
 		// Fonts
 		$('head').append('<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&display=swap" rel="stylesheet">');
 		$('head').append('<link href="https://fonts.googleapis.com/css2?family=Solway:wght@400;500;700&display=swap" rel="stylesheet">');
@@ -523,23 +618,12 @@ export class World
 		// Canvas
 		document.body.appendChild(this.renderer.domElement);
 		this.renderer.domElement.id = 'canvas';
+		this.ownedDomNodes = [...document.head.children, ...document.body.children].filter((node) => !existingNodes.has(node));
 	}
 
 	private createParamsGUI(scope: World): void
 	{
-		this.params = {
-			Pointer_Lock: true,
-			Mouse_Sensitivity: 0.3,
-			Time_Scale: 1,
-			Shadows: true,
-			FXAA: true,
-			Debug_Physics: false,
-			Debug_FPS: false,
-			Sun_Elevation: 50,
-			Sun_Rotation: 145,
-		};
-
-		const gui = new GUI.GUI();
+		const gui = this.gui = new GUI.GUI();
 
 		// Scenario
 		this.scenarioGUIFolder = gui.addFolder('Scenarios');
@@ -601,7 +685,7 @@ export class World
 				}
 				else
 				{
-					this.cannonDebugRenderer.clearMeshes();
+					this.cannonDebugRenderer.dispose();
 					this.cannonDebugRenderer = undefined;
 				}
 

@@ -12,6 +12,7 @@ export class InputManager implements IUpdatable
 	public pointerLock: any;
 	public isLocked: boolean;
 	public inputReceiver: IInputReceiver;
+	private disposed: boolean = false;
 
 	public boundOnMouseDown: (evt: any) => void;
 	public boundOnMouseMove: (evt: any) => void;
@@ -56,6 +57,24 @@ export class InputManager implements IUpdatable
 		document.addEventListener('keyup', this.boundOnKeyUp, false);
 
 		world.registerUpdatable(this);
+	}
+
+	public dispose(): void
+	{
+		if (this.disposed) return;
+		this.disposed = true;
+		this.domElement.removeEventListener('mousedown', this.boundOnMouseDown, false);
+		this.domElement.removeEventListener('mousemove', this.boundOnMouseMove, false);
+		this.domElement.removeEventListener('mouseup', this.boundOnMouseUp, false);
+		document.removeEventListener('wheel', this.boundOnMouseWheelMove, false);
+		document.removeEventListener('pointerlockchange', this.boundOnPointerlockChange, false);
+		document.removeEventListener('pointerlockerror', this.boundOnPointerlockError, false);
+		document.removeEventListener('keydown', this.boundOnKeyDown, false);
+		document.removeEventListener('keyup', this.boundOnKeyUp, false);
+		if (document.pointerLockElement === this.domElement) document.exitPointerLock?.();
+		this.isLocked = false;
+		this.inputReceiver = undefined;
+		this.world.unregisterUpdatable(this);
 	}
 
 	public update(timestep: number, unscaledTimeStep: number): void
