@@ -4,6 +4,7 @@ import { UIManager } from './UIManager';
 import { Scenario } from '../world/Scenario';
 import Swal from 'sweetalert2';
 import { World } from '../world/World';
+import { gameUiStore } from '../../game/ui/gameUiStore';
 
 export class LoadingManager
 {
@@ -44,6 +45,7 @@ export class LoadingManager
 		(error)  =>
 		{
 			console.error(error);
+			gameUiStore.setError(`${path} could not be loaded`);
 		});
 	}
 
