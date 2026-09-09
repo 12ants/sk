@@ -20,17 +20,17 @@
   },
   "homepage": "https://github.com/swift502/Sketchbook",
   "devDependencies": {
-    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@types/jquery": "^3.5.5",
     "@types/lodash": "^4.14.168",
     "@types/node": "24.10.1",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "5.0.0",
+    "@vitejs/plugin-react": "6.1.1",
     "jsdom": "30.0.1",
     "typescript": "7.0.2",
-    "vite": "7.0.2",
+    "vite": "8.2.2",
     "vitest": "5.0.0"
   },
   "dependencies": {
