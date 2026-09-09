@@ -26,6 +26,7 @@ export var CannonDebugRenderer = function(scene, world, options){
     this._boxGeometry = new THREE.BoxGeometry(1, 1, 1);
     this._planeGeometry = new THREE.PlaneGeometry( 10, 10, 10, 10 );
     this._cylinderGeometry = new THREE.CylinderGeometry( 1, 1, 10, 10 );
+    this._sharedGeometries = new Set([this._sphereGeometry, this._boxGeometry, this._planeGeometry, this._cylinderGeometry]);
 };
 
 CannonDebugRenderer.prototype = {
@@ -75,7 +76,7 @@ CannonDebugRenderer.prototype = {
         for(var i = meshIndex; i < meshes.length; i++){
             var mesh = meshes[i];
             if(mesh){
-                this.scene.remove(mesh);
+                this._removeMesh(mesh);
             }
         }
 
@@ -86,7 +87,7 @@ CannonDebugRenderer.prototype = {
         var mesh = this._meshes[index];
         if(!this._typeMatch(mesh, shape)){
             if(mesh){
-                this.scene.remove(mesh);
+                this._removeMesh(mesh);
             }
             mesh = this._meshes[index] = this._createMesh(shape);
         }
@@ -242,10 +243,13 @@ CannonDebugRenderer.prototype = {
         }
     },
 
+    _removeMesh: function(mesh){
+        this.scene.remove(mesh);
+        if (!this._sharedGeometries.has(mesh.geometry)) mesh.geometry.dispose();
+    },
+
     clearMeshes: function(){
-        this._meshes.forEach((mesh) => {
-            this.scene.remove(mesh);
-        });
+        this._meshes.forEach((mesh) => this._removeMesh(mesh));
         this._meshes.length = 0;
     },
 
@@ -254,7 +258,6 @@ CannonDebugRenderer.prototype = {
             this._sphereGeometry, this._boxGeometry, this._planeGeometry, this._cylinderGeometry,
             this._boxMaterial, this._triMaterial, this._sphereMaterial
         ]);
-        this._meshes.forEach((mesh) => resources.add(mesh.geometry));
         this.clearMeshes();
         resources.forEach((resource) => resource.dispose());
     }

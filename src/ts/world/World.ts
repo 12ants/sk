@@ -79,6 +79,7 @@ export class World
 	private onWindowResize?: () => void;
 	private gui?: any;
 	private ownedDomNodes: Element[] = [];
+	private ownedSceneResources = new Set<{ dispose(): void }>();
 
 	constructor(options?: WorldOptions);
 	/** @deprecated Supply WorldOptions with an R3F runtime in React applications. */
@@ -246,22 +247,12 @@ export class World
 		this.cannonDebugRenderer = undefined;
 
 		// World owns its scene resources; the renderer and canvas remain with R3F.
-		const resources = new Set<{ dispose(): void }>();
-		this.graphicsWorld.traverse((object: any) => {
-			if (object.geometry) resources.add(object.geometry);
-			if (object.skeleton) resources.add(object.skeleton);
-			if (object.shadow) resources.add(object.shadow);
-			const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
-			for (const material of materials) {
-				resources.add(material);
-				for (const value of Object.values(material) as any[]) if (value?.isTexture) resources.add(value);
-				for (const uniform of Object.values(material.uniforms ?? {}) as any[]) if (uniform.value?.isTexture) resources.add(uniform.value);
-			}
-		});
+		this.trackSceneResources(this.graphicsWorld);
 		this.clearEntities();
 		this.sky?.csm.remove();
 		this.sky?.csm.dispose();
-		resources.forEach((resource) => resource.dispose());
+		this.ownedSceneResources.forEach((resource) => resource.dispose());
+		this.ownedSceneResources.clear();
 		this.graphicsWorld.clear();
 		this.graphicsWorld.removeFromParent();
 		for (const body of [...this.physicsWorld.bodies]) this.physicsWorld.remove(body);
@@ -410,8 +401,30 @@ export class World
 
 	public remove(worldEntity: IWorldEntity): void
 	{
+		const previousChildren = [...this.graphicsWorld.children];
 		worldEntity.removeFromWorld(this);
+		// Entities can own separate roots, such as vehicle wheels and character raycast helpers.
+		for (const child of previousChildren)
+		{
+			if (child.parent !== this.graphicsWorld) this.trackSceneResources(child);
+		}
 		this.unregisterUpdatable(worldEntity);
+	}
+
+	private trackSceneResources(root: THREE.Object3D): void
+	{
+		// Retain ownership across scenario changes; shared resources stay usable until world disposal.
+		root.traverse((object: any) => {
+			if (object.geometry) this.ownedSceneResources.add(object.geometry);
+			if (object.skeleton) this.ownedSceneResources.add(object.skeleton);
+			if (object.shadow) this.ownedSceneResources.add(object.shadow);
+			const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+			for (const material of materials) {
+				this.ownedSceneResources.add(material);
+				for (const value of Object.values(material) as any[]) if (value?.isTexture) this.ownedSceneResources.add(value);
+				for (const uniform of Object.values(material.uniforms ?? {}) as any[]) if (uniform.value?.isTexture) this.ownedSceneResources.add(uniform.value);
+			}
+		});
 	}
 
 	public unregisterUpdatable(registree: IUpdatable): void

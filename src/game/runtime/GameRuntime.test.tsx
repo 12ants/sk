@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { World } from '../../ts/world/World';
+import { Character } from '../../ts/characters/Character';
 import { GameRuntime } from './GameRuntime';
 import { LoadingManager } from '../../ts/core/LoadingManager';
 import { gameUiStore } from '../ui/gameUiStore';
@@ -71,6 +72,34 @@ test('disposes owned scene resources once while keeping the host canvas attached
   expect(scene.parent).toBeNull();
   expect(runtime.canvas.parentElement).toBe(document.body);
   runtime.canvas.remove();
+});
+
+test('disposes detached entity resources once while preserving resources shared with the current scene', () => {
+  const world = new World({ runtime: makeRuntime() });
+  const character = new Character({ scene: new THREE.Group(), animations: [new THREE.AnimationClip('idle', 1, [])] });
+  const uniqueTexture = new THREE.Texture();
+  const uniqueMaterial = new THREE.MeshStandardMaterial({ map: uniqueTexture });
+  const uniqueGeometry = new THREE.BoxGeometry();
+  const sharedTexture = new THREE.Texture();
+  const sharedMaterial = new THREE.MeshStandardMaterial({ map: sharedTexture });
+  const sharedGeometry = new THREE.BoxGeometry();
+  character.add(new THREE.Mesh(uniqueGeometry, uniqueMaterial), new THREE.Mesh(sharedGeometry, sharedMaterial));
+  world.add(character);
+  world.graphicsWorld.add(new THREE.Mesh(sharedGeometry, sharedMaterial));
+  const resources = [uniqueTexture, uniqueMaterial, uniqueGeometry, sharedTexture, sharedMaterial, sharedGeometry,
+    character.raycastBox.geometry, character.raycastBox.material as THREE.Material];
+  const disposals = resources.map((resource) => vi.spyOn(resource, 'dispose'));
+
+  world.clearEntities();
+
+  expect(character.parent).toBeNull();
+  expect(character.raycastBox.parent).toBeNull();
+  for (const dispose of disposals.slice(3, 6)) expect(dispose).not.toHaveBeenCalled();
+
+  world.dispose();
+  world.dispose();
+
+  for (const dispose of disposals) expect(dispose).toHaveBeenCalledTimes(1);
 });
 
 test('ignores pending scene and entity loads after disposal without changing current UI state', () => {
