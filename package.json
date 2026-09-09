@@ -1,21 +1,13 @@
 {
-  "name": "sketchbook",
-  "version": "0.4.0",
-  "description": "3D playground built on three.js and cannon.js",
-  "keywords": [
-    "3d",
-    "threejs",
-    "cannonjs",
-    "game",
-    "engine",
-    "typescript",
-    "sketchbook"
-  ],
-  "main": "build/sketchbook.min.js",
-  "types": "build/types/sketchbook.d.ts",
+  "name": "gta11",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "webpack-dev-server --config webpack.dev.js",
-    "build": "webpack --config webpack.prod.js"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc -b --pretty false"
   },
   "repository": {
     "type": "git",
@@ -28,22 +20,29 @@
   },
   "homepage": "https://github.com/swift502/Sketchbook",
   "devDependencies": {
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.3",
     "@types/jquery": "^3.5.5",
     "@types/lodash": "^4.14.168",
-    "css-loader": "^7.1.5",
-    "style-loader": "^1.3.0",
-    "ts-loader": "^6.2.2",
-    "typescript": "^3.9.9",
-    "webpack": "^5.110.3",
-    "webpack-cli": "^7.2.3",
-    "webpack-dev-server": "^6.0.0",
-    "webpack-merge": "^4.2.2"
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.0.0",
+    "jsdom": "30.0.1",
+    "typescript": "7.0.2",
+    "vite": "7.0.2",
+    "vitest": "5.0.0"
   },
   "dependencies": {
+    "@react-three/fiber": "9.7.0",
+    "@react-three/postprocessing": "3.1.1",
     "jquery": "^3.6.0",
+    "leva": "0.10.1",
     "lodash": "^4.17.21",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "sweetalert2": "^9.17.2",
-    "three": "^0.185.1",
+    "three": "0.186.0",
     "three-csm": "1.0.2"
   }
 }
