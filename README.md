@@ -48,4 +48,4 @@ Local worktrees are excluded from Git and test discovery.
 
 ## Architecture
 
-See `docs/gta11-architecture.md` for how the React/R3F shell (`src/App.tsx`, `src/game/**`) integrates with the simulation core (`src/ts/**`), including the constraint that R3F owns the WebGL canvas and frame loop while `World` owns game logic.
+See `docs/gta11-architecture.md` for how the React/R3F shell (`src/App.tsx`, `src/game/**`) integrates with the simulation core (`src/ts/**`), including the constraint that R3F owns the WebGL canvas and frame loop while `World` owns game logic. `AGENTS.md` has the short version plus gotchas for anyone (human or agent) making changes.
