@@ -29,3 +29,9 @@ test('mounts the React loading overlay alongside its canvas', () => {
   expect(screen.getByRole('heading', { name: 'gta11' })).toBeInTheDocument();
   expect(screen.getByRole('status')).toHaveTextContent(/Loading/);
 });
+
+test('does not render legacy Sketchbook branding', () => {
+  render(<App />);
+  expect(document.title).toBe('gta11');
+  expect(screen.queryByText(/Sketchbook/i)).not.toBeInTheDocument();
+});
