@@ -52,6 +52,23 @@ spawn.position.set(0, 1, 0);
 spawn.userData = { data: 'spawn', type: 'player' };
 scenario.add(spawn);
 
+// Vehicle spawn points, spread across the ground plane clear of the player
+// and each other. Position.y is 0 (ground level) because VehicleSpawnPoint
+// adds a +1 offset when placing the vehicle, matching the player's y=1.
+const vehicleSpawns = [
+	{ name: 'car_spawn', type: 'car', position: [15, 0, 15] },
+	{ name: 'heli_spawn', type: 'heli', position: [-20, 0, -15] },
+	{ name: 'airplane_spawn', type: 'airplane', position: [0, 0, -30] },
+];
+
+for (const { name, type, position } of vehicleSpawns) {
+	const vehicleSpawn = new THREE.Object3D();
+	vehicleSpawn.name = name;
+	vehicleSpawn.position.set(...position);
+	vehicleSpawn.userData = { data: 'spawn', type };
+	scenario.add(vehicleSpawn);
+}
+
 const outPath = new URL('../public/assets/small_plane.glb', import.meta.url);
 
 new GLTFExporter().parse(
