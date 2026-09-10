@@ -14,14 +14,14 @@ export class Wheel
 
 		this.position = wheelObject.position;
 
-		if (wheelObject.hasOwnProperty('userData') && wheelObject.userData.hasOwnProperty('data'))
+		if (wheelObject.hasOwnProperty('userData'))
 		{
-			if (wheelObject.userData.hasOwnProperty('steering')) 
+			if (wheelObject.userData.hasOwnProperty('steering'))
 			{
 				this.steering = (wheelObject.userData.steering === 'true');
 			}
 
-			if (wheelObject.userData.hasOwnProperty('drive')) 
+			if (wheelObject.userData.hasOwnProperty('drive'))
 			{
 				this.drive = wheelObject.userData.drive;
 			}

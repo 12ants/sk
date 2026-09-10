@@ -105,22 +105,6 @@ export class LoadingManager
 		}
 	}
 
-	private getLoadingPercentage(): number
-	{
-		let done = true;
-		let total = 0;
-		let finished = 0;
-
-		for (const item of this.loadingTracker)
-		{
-			total++;
-			finished += item.progress;
-			if (!item.finished) done = false;
-		}
-
-		return (finished / total) * 100;
-	}
-
 	private isLoadingDone(): boolean
 	{
 		for (const entry of this.loadingTracker) {

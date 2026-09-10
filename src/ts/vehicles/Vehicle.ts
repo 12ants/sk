@@ -39,7 +39,7 @@ export abstract class Vehicle extends THREE.Object3D implements IWorldEntity
 		super();
 
 		if (handlingSetup === undefined) handlingSetup = {};
-		handlingSetup.chassisConnectionPointLocal = new CANNON.Vec3(),
+		handlingSetup.chassisConnectionPointLocal = new CANNON.Vec3();
 		handlingSetup.axleLocal = new CANNON.Vec3(-1, 0, 0);
 		handlingSetup.directionLocal = new CANNON.Vec3(0, -1, 0);
 
@@ -412,6 +412,7 @@ export abstract class Vehicle extends THREE.Object3D implements IWorldEntity
 						{
 							child.visible = false;
 
+							// Sphere colliders assume uniform scale; only scale.x is used for the radius
 							let phys = new CANNON.Sphere(child.scale.x);
 							phys.collisionFilterGroup = CollisionGroups.TrimeshColliders;
 							this.collision.addShape(phys, new CANNON.Vec3(child.position.x, child.position.y, child.position.z));
@@ -427,11 +428,11 @@ export abstract class Vehicle extends THREE.Object3D implements IWorldEntity
 
 		if (this.collision.shapes.length === 0)
 		{
-			console.warn('Vehicle ' + typeof(this) + ' has no collision data.');
+			console.warn('Vehicle ' + this.constructor.name + ' has no collision data.');
 		}
 		if (this.seats.length === 0)
 		{
-			console.warn('Vehicle ' + typeof(this) + ' has no seats.');
+			console.warn('Vehicle ' + this.constructor.name + ' has no seats.');
 		}
 		else
 		{
