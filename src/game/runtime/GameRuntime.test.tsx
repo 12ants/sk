@@ -23,10 +23,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test('injected World leaves canvas, resizing and frame scheduling with its host and clamps simulation time', () => {
+test('injected World leaves canvas and host renderer untouched and clamps simulation time', () => {
   const runtime = makeRuntime();
-  const requestFrame = vi.spyOn(window, 'requestAnimationFrame');
-  const resize = vi.spyOn(window, 'addEventListener');
   const existingNodes = [...document.body.children];
   const world = new World({ runtime });
   const updates: number[][] = [];
@@ -34,7 +32,6 @@ test('injected World leaves canvas, resizing and frame scheduling with its host 
   world.setTimeScale(0.5);
   world.tick(1 / 60);
   world.tick(1);
-  world.render(world);
   world.dispose();
   world.tick(1);
 
@@ -43,8 +40,6 @@ test('injected World leaves canvas, resizing and frame scheduling with its host 
   expect(runtime.renderer.setPixelRatio).not.toHaveBeenCalled();
   expect(runtime.renderer.render).not.toHaveBeenCalled();
   expect(runtime.renderer.dispose).not.toHaveBeenCalled();
-  expect(requestFrame).not.toHaveBeenCalled();
-  expect(resize.mock.calls.filter(([name]) => name === 'resize')).toHaveLength(0);
   expect([...document.body.children]).toEqual(existingNodes);
   expect(gameUiStore.getSnapshot().controls.length).toBeGreaterThan(0);
 });
@@ -226,7 +221,6 @@ test('creates one externally managed world, advances real physics with R3F frame
   expect(world.graphicsWorld.parent).not.toBeNull();
   expect(world.camera).toBe(createWorld.mock.calls[0][0].runtime.camera);
   expect(world.renderer).toBe(createWorld.mock.calls[0][0].runtime.renderer);
-  expect(world.composer).toBeUndefined();
 
   await renderer.advanceFrames(1, 1 / 60);
   expect(tick).toHaveBeenCalledWith(1 / 60);

@@ -8,6 +8,7 @@ import { GAME_WORLD_URL } from './game/runtime/assetPaths';
 import { GameOverlay } from './game/ui/GameOverlay';
 import { gameUiStore } from './game/ui/gameUiStore';
 import type { World } from './ts/world/World';
+import { DEFAULT_CAMERA_FOV, DEFAULT_CAMERA_NEAR, DEFAULT_CAMERA_FAR } from './ts/world/WorldConstants';
 
 const subscribeToNothing = () => () => {};
 const noSettings = () => null;
@@ -39,7 +40,7 @@ export function App() {
         shadows={{ type: PCFShadowMap }}
         dpr={[1, 2]}
         gl={{ antialias: false, toneMapping: ACESFilmicToneMapping }}
-        camera={{ fov: 80, near: 0.1, far: 1010 }}
+        camera={{ fov: DEFAULT_CAMERA_FOV, near: DEFAULT_CAMERA_NEAR, far: DEFAULT_CAMERA_FAR }}
         onCreated={({ gl }) => { gl.domElement.tabIndex = 0; gl.domElement.setAttribute('aria-label', 'gta11 playfield'); }}
       >
         <GameRuntime worldScenePath={GAME_WORLD_URL} onWorldReady={setWorld} />
