@@ -195,6 +195,7 @@ export class InputManager implements IUpdatable
 	public onKeyDown(event: KeyboardEvent): void
 	{
 		if (this.ignoresEvent(event)) return;
+		if (event.code === 'KeyP' && !event.repeat) this.world.togglePerfOverlay();
 		if (this.inputReceiver !== undefined)
 		{
 			this.inputReceiver.handleKeyboardEvent(event, event.code, true);
