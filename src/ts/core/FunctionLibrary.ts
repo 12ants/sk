@@ -40,9 +40,9 @@ export function round(value: number, decimals: number = 0): number
 export function roundVector(vector: THREE.Vector3, decimals: number = 0): THREE.Vector3
 {
 	return new THREE.Vector3(
-		this.round(vector.x, decimals),
-		this.round(vector.y, decimals),
-		this.round(vector.z, decimals),
+		round(vector.x, decimals),
+		round(vector.y, decimals),
+		round(vector.z, decimals),
 	);
 }
 
@@ -83,7 +83,7 @@ export function getAngleBetweenVectors(v1: THREE.Vector3, v2: THREE.Vector3, dot
  */
 export function getSignedAngleBetweenVectors(v1: THREE.Vector3, v2: THREE.Vector3, normal: THREE.Vector3 = new THREE.Vector3(0, 1, 0), dotTreshold: number = 0.0005): number
 {
-	let angle = this.getAngleBetweenVectors(v1, v2, dotTreshold);
+	let angle = getAngleBetweenVectors(v1, v2, dotTreshold);
 
 	// Get vector pointing up or down
 	let cross = new THREE.Vector3().crossVectors(v1, v2);
