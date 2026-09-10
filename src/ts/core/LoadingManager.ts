@@ -2,7 +2,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { LoadingTrackerEntry } from './LoadingTrackerEntry';
 import { UIManager } from './UIManager';
 import { Scenario } from '../world/Scenario';
-import Swal from 'sweetalert2';
 import { World } from '../world/World';
 import { gameUiStore } from '../../game/ui/gameUiStore';
 
@@ -90,15 +89,17 @@ export class LoadingManager
 			{
 				this.world.update(1, 1);
 	
-				Swal.fire({
-					title: scenario.descriptionTitle,
-					html: scenario.descriptionContent,
-					confirmButtonText: 'Play',
-					buttonsStyling: false,
-					onClose: () => {
-						this.world.setTimeScale(1);
-						UIManager.setUserInterfaceVisible(true);
-					}
+				this.world.setTimeScale(0);
+				UIManager.setUserInterfaceVisible(true);
+				// Scene metadata historically contains HTML. Convert it to inert text for React.
+				const plainText = (html: string): string => {
+					const document = new DOMParser().parseFromString(html.replace(/<\/(p|div|li)>|<br\s*\/?\s*>/gi, '\n'), 'text/html');
+					document.querySelectorAll('script, style').forEach((node) => node.remove());
+					return document.body.textContent.replace(/Sketchbook/gi, 'gta11').trim();
+				};
+				gameUiStore.setWelcome({
+					title: plainText(scenario.descriptionTitle || scenario.name || 'gta11'),
+					content: plainText(scenario.descriptionContent || 'Explore the world and interact with available vehicles.'),
 				});
 			};
 		}

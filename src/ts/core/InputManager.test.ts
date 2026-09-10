@@ -1,5 +1,6 @@
 import { InputManager } from './InputManager';
 import type { World } from '../world/World';
+import { createTestWorld } from '../../test/createTestWorld';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -39,4 +40,20 @@ test('disposes every input listener, including active drag listeners, and unregi
   expect(received).not.toHaveBeenCalled();
   expect(registered.size).toBe(0);
   expect(manager.inputReceiver).toBeUndefined();
+});
+
+test('releases pointer lock granted after a menu has blocked game input', () => {
+  const world = createTestWorld();
+  const exitPointerLock = vi.fn();
+  Object.defineProperty(document, 'exitPointerLock', { configurable: true, value: exitPointerLock });
+  world.inputManager.setUiBlocked(true);
+  Object.defineProperty(document, 'pointerLockElement', { configurable: true, value: world.canvas });
+
+  document.dispatchEvent(new Event('pointerlockchange'));
+
+  expect(exitPointerLock).toHaveBeenCalledTimes(1);
+  expect(world.inputManager.isLocked).toBe(false);
+  delete (document as any).pointerLockElement;
+  delete (document as any).exitPointerLock;
+  world.dispose();
 });

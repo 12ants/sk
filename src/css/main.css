@@ -1,7 +1,5 @@
-@import "modules/base.css";
-@import "modules/githubCorner.css";
-@import "modules/leftPanel.css";
-@import "modules/dat.gui.css";
-@import "modules/loadingScreen.css";
-@import "modules/cubeLoader.css";
-@import "modules/welcomeScreen.css";
+html, body, #root { width: 100%; height: 100%; margin: 0; }
+body { overflow: hidden; background: #102735; }
+* { box-sizing: border-box; }
+.game-app { position: relative; width: 100%; height: 100dvh; overflow: hidden; }
+.game-app canvas { display: block; }

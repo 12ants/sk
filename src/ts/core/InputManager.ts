@@ -13,6 +13,7 @@ export class InputManager implements IUpdatable
 	public isLocked: boolean;
 	public inputReceiver: IInputReceiver;
 	private disposed: boolean = false;
+	private uiBlocked: boolean = false;
 
 	public boundOnMouseDown: (evt: any) => void;
 	public boundOnMouseMove: (evt: any) => void;
@@ -84,7 +85,7 @@ export class InputManager implements IUpdatable
 			this.setInputReceiver(this.world.cameraOperator);
 		}
 
-		this.inputReceiver?.inputReceiverUpdate(unscaledTimeStep);
+		if (!this.uiBlocked) this.inputReceiver?.inputReceiverUpdate(unscaledTimeStep);
 	}
 
 	public setInputReceiver(receiver: IInputReceiver): void
@@ -96,12 +97,41 @@ export class InputManager implements IUpdatable
 	public setPointerLock(enabled: boolean): void
 	{
 		this.pointerLock = enabled;
+		if (!enabled && document.pointerLockElement === this.domElement) document.exitPointerLock?.();
+	}
+
+	public setUiBlocked(blocked: boolean): void
+	{
+		this.uiBlocked = blocked;
+		if (!blocked) return;
+		if (document.pointerLockElement === this.domElement) document.exitPointerLock?.();
+		this.domElement.removeEventListener('mousemove', this.boundOnMouseMove, false);
+		this.domElement.removeEventListener('mouseup', this.boundOnMouseUp, false);
+		this.isLocked = false;
+		if (this.inputReceiver?.resetControls) this.inputReceiver.resetControls();
+		else if (this.inputReceiver) Object.values(this.inputReceiver.actions).forEach((action) => {
+			action.isPressed = false;
+			action.justPressed = false;
+			action.justReleased = false;
+		});
+	}
+
+	private ignoresEvent(event: Event): boolean
+	{
+		return this.disposed || this.uiBlocked || (event.target instanceof Element &&
+			event.target.closest('[data-game-ui], input, select, textarea, button, a, [contenteditable]') !== null);
 	}
 
 	public onPointerlockChange(event: MouseEvent): void
 	{
 		if (document.pointerLockElement === this.domElement)
 		{
+			if (this.uiBlocked || !this.pointerLock || this.disposed)
+			{
+				document.exitPointerLock?.();
+				this.isLocked = false;
+				return;
+			}
 			this.domElement.addEventListener('mousemove', this.boundOnMouseMove, false);
 			this.domElement.addEventListener('mouseup', this.boundOnMouseUp, false);
 			this.isLocked = true;
@@ -121,6 +151,7 @@ export class InputManager implements IUpdatable
 
 	public onMouseDown(event: MouseEvent): void
 	{
+		if (this.ignoresEvent(event)) return;
 		if (this.pointerLock)
 		{
 			this.domElement.requestPointerLock();
@@ -139,6 +170,7 @@ export class InputManager implements IUpdatable
 
 	public onMouseMove(event: MouseEvent): void
 	{
+		if (this.ignoresEvent(event)) return;
 		if (this.inputReceiver !== undefined)
 		{
 			this.inputReceiver.handleMouseMove(event, event.movementX, event.movementY);
@@ -147,6 +179,7 @@ export class InputManager implements IUpdatable
 
 	public onMouseUp(event: MouseEvent): void
 	{
+		if (this.ignoresEvent(event)) return;
 		if (!this.pointerLock)
 		{
 			this.domElement.removeEventListener('mousemove', this.boundOnMouseMove, false);
@@ -161,6 +194,7 @@ export class InputManager implements IUpdatable
 
 	public onKeyDown(event: KeyboardEvent): void
 	{
+		if (this.ignoresEvent(event)) return;
 		if (this.inputReceiver !== undefined)
 		{
 			this.inputReceiver.handleKeyboardEvent(event, event.code, true);
@@ -169,6 +203,7 @@ export class InputManager implements IUpdatable
 
 	public onKeyUp(event: KeyboardEvent): void
 	{
+		if (this.ignoresEvent(event)) return;
 		if (this.inputReceiver !== undefined)
 		{
 			this.inputReceiver.handleKeyboardEvent(event, event.code, false);
@@ -177,6 +212,7 @@ export class InputManager implements IUpdatable
 
 	public onMouseWheelMove(event: WheelEvent): void
 	{
+		if (this.ignoresEvent(event)) return;
 		if (this.inputReceiver !== undefined)
 		{
 			this.inputReceiver.handleMouseWheel(event, event.deltaY);

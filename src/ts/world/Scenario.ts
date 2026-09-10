@@ -17,7 +17,7 @@ export class Scenario
 	
 	private rootNode: THREE.Object3D;
 	private spawnPoints: ISpawnPoint[] = [];
-	private invisible: boolean = false;
+	public invisible: boolean = false;
 	private initialCameraAngle: number;
 
 	constructor(root: THREE.Object3D, world: World)
@@ -56,8 +56,6 @@ export class Scenario
 			this.initialCameraAngle = root.userData.camera_angle;
 		}
 
-		if (!this.invisible) this.createLaunchLink();
-
 		// Find all scenario spawns and enitites
 		root.traverse((child) => {
 			if (child.hasOwnProperty('userData') && child.userData.hasOwnProperty('data'))
@@ -93,15 +91,6 @@ export class Scenario
 				}
 			}
 		});
-	}
-
-	public createLaunchLink(): void
-	{
-		this.world.params[this.name] = () =>
-		{
-			this.world.launchScenario(this.id);
-		};
-		this.world.scenarioGUIFolder?.add(this.world.params, this.name);
 	}
 
 	public launch(loadingManager: LoadingManager, world: World): void
