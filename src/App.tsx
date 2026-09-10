@@ -1,10 +1,12 @@
 import { Canvas } from '@react-three/fiber';
 import { EffectComposer, FXAA } from '@react-three/postprocessing';
+import { Perf } from 'r3f-perf';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ACESFilmicToneMapping } from 'three';
 import { GameRuntime } from './game/runtime/GameRuntime';
 import { GAME_WORLD_URL } from './game/runtime/assetPaths';
 import { GameOverlay } from './game/ui/GameOverlay';
+import { gameUiStore } from './game/ui/gameUiStore';
 import type { World } from './ts/world/World';
 
 const subscribeToNothing = () => () => {};
@@ -18,6 +20,12 @@ function GameEffects({ world }: { world: World | null }) {
       <FXAA />
     </EffectComposer>
   );
+}
+
+function GamePerfOverlay() {
+  const state = useSyncExternalStore(gameUiStore.subscribe, gameUiStore.getSnapshot);
+  if (!state.perfVisible) return null;
+  return <Perf position="top-right" minimal={false} matrixUpdate />;
 }
 
 export function App() {
@@ -36,6 +44,7 @@ export function App() {
       >
         <GameRuntime worldScenePath={GAME_WORLD_URL} onWorldReady={setWorld} />
         <GameEffects world={world} />
+        <GamePerfOverlay />
       </Canvas>
       <GameOverlay world={world} />
     </main>

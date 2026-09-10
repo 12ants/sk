@@ -31,6 +31,7 @@ export class CameraOperator implements IInputReceiver, IUpdatable
 	public rightVelocity: number = 0;
 
 	public followMode: boolean = false;
+	public invertLook: boolean = false;
 
 	public characterCaller: Character;
 
@@ -81,7 +82,7 @@ export class CameraOperator implements IInputReceiver, IUpdatable
 	{
 		this.theta -= deltaX * (this.sensitivity.x / 2);
 		this.theta %= 360;
-		this.phi += deltaY * (this.sensitivity.y / 2);
+		this.phi += deltaY * (this.sensitivity.y / 2) * (this.invertLook ? -1 : 1);
 		this.phi = Math.min(85, Math.max(-85, this.phi));
 	}
 

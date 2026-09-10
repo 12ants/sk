@@ -10,6 +10,7 @@ export type GameUiState = {
   statsVisible: boolean;
   fps: number | null;
   welcome: WelcomeMessage | null;
+  perfVisible: boolean;
 };
 
 type Listener = () => void;
@@ -35,6 +36,7 @@ class GameUiStore {
     statsVisible: false,
     fps: null,
     welcome: null,
+    perfVisible: false,
   });
 
   public getSnapshot = (): GameUiState => this.snapshot;
@@ -59,6 +61,8 @@ class GameUiStore {
   public pushMessage = (text: string): void => this.update({ messages: [...this.snapshot.messages, text] });
 
   public setStatsVisible = (statsVisible: boolean): void => this.update({ statsVisible });
+
+  public setPerfVisible = (perfVisible: boolean): void => this.update({ perfVisible });
 
   private update(update: Partial<GameUiState>): void {
     this.snapshot = freezeSnapshot({ ...this.snapshot, ...update });

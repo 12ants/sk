@@ -45,6 +45,9 @@ export type WorldSettings = {
 	Debug_FPS: boolean;
 	Sun_Elevation: number;
 	Sun_Rotation: number;
+	Invert_Look: boolean;
+	Field_Of_View: number;
+	Render_Scale: number;
 };
 
 export type WorldSettingsSnapshot = Readonly<WorldSettings & { scenarioId: string | null }>;
@@ -169,6 +172,9 @@ export class World
 			Debug_FPS: false,
 			Sun_Elevation: 50,
 			Sun_Rotation: 145,
+			Invert_Look: false,
+			Field_Of_View: this.camera.fov,
+			Render_Scale: 1,
 		};
 		this.publishSettings();
 		gameUiStore.setStatsVisible(false);
@@ -418,6 +424,33 @@ export class World
 		this.params.Mouse_Sensitivity = value;
 		this.cameraOperator.setSensitivity(value, value * 0.8);
 		this.publishSettings();
+	}
+
+	public setInvertLook(enabled: boolean): void
+	{
+		this.params.Invert_Look = enabled;
+		this.cameraOperator.invertLook = enabled;
+		this.publishSettings();
+	}
+
+	public setFov(value: number): void
+	{
+		this.params.Field_Of_View = value;
+		this.camera.fov = value;
+		this.camera.updateProjectionMatrix();
+		this.publishSettings();
+	}
+
+	public setRenderScale(value: number): void
+	{
+		this.params.Render_Scale = value;
+		this.renderer.setPixelRatio(value);
+		this.publishSettings();
+	}
+
+	public togglePerfOverlay(): void
+	{
+		gameUiStore.setPerfVisible(!gameUiStore.getSnapshot().perfVisible);
 	}
 
 	public setDebugPhysics(enabled: boolean): void

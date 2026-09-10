@@ -30,7 +30,7 @@ test('discloses semantic controls only when requested and follows live store cha
   fireEvent.click(screen.getByRole('button', { name: 'Controls' }));
   const controls = screen.getByRole('list', { name: 'Game controls' });
   expect(within(controls).getByText('Run forward')).toBeInTheDocument();
-  expect(controls.querySelectorAll('kbd')).toHaveLength(2);
+  expect(controls.querySelectorAll('kbd')).toHaveLength(3);
 
   act(() => gameUiStore.setControls([{ keys: ['F'], desc: 'Enter vehicle' }]));
   expect(within(controls).getByText('Enter vehicle')).toBeInTheDocument();

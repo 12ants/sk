@@ -69,6 +69,10 @@ export function GameOverlay({ world = null }: { world?: World | null }) {
               <div className="game-panel-heading"><h2>{panel}</h2><button aria-label={`Close ${panel.toLowerCase()}`} onClick={closePanel}>×</button></div>
               {panel === 'Settings' ? <GameSettings world={world} /> : panel === 'Controls' ? (
                 <ul className="game-controls" aria-label="Game controls">
+                  <li>
+                    <span className="game-keys"><kbd>P</kbd></span>
+                    <span>Toggle performance overlay</span>
+                  </li>
                   {state.controls.map((row, index) => <li key={index}>
                     <span className="game-keys">{row.keys.map((key, keyIndex) => ['+', 'and', 'or', '&'].includes(key) ? <span key={keyIndex}>{key}</span> : <kbd key={keyIndex}>{key}</kbd>)}</span>
                     <span>{row.desc}</span>
