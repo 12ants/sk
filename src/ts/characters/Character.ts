@@ -162,7 +162,7 @@ export class Character extends THREE.Object3D implements IWorldEntity
 		this.setState(new Idle(this));
 	}
 
-	public setAnimations(animations: []): void
+	public setAnimations(animations: THREE.AnimationClip[]): void
 	{
 		this.animations = animations;
 	}
@@ -407,10 +407,8 @@ export class Character extends THREE.Object3D implements IWorldEntity
 	{
 		this.behaviour?.update(timeStep);
 		this.vehicleEntryInstance?.update(timeStep);
-		// console.log(this.occupyingSeat);
 		this.charState?.update(timeStep);
 
-		// this.visuals.position.copy(this.modelOffset);
 		if (this.physicsEnabled) this.springMovement(timeStep);
 		if (this.physicsEnabled) this.springRotation(timeStep);
 		if (this.physicsEnabled) this.rotateModel();
@@ -502,13 +500,13 @@ export class Character extends THREE.Object3D implements IWorldEntity
 		{
 			// gltf
 			let clip = THREE.AnimationClip.findByName( this.animations, clipName );
-
-			let action = this.mixer.clipAction(clip);
-			if (action === null)
+			if (clip === null)
 			{
 				console.error(`Animation ${clipName} not found!`);
 				return 0;
 			}
+
+			let action = this.mixer.clipAction(clip);
 
 			this.mixer.stopAllAction();
 			action.fadeIn(fadeIn);
@@ -516,6 +514,8 @@ export class Character extends THREE.Object3D implements IWorldEntity
 
 			return action.getClip().duration;
 		}
+
+		return 0;
 	}
 
 	public springMovement(timeStep: number): void
@@ -917,6 +917,7 @@ export class Character extends THREE.Object3D implements IWorldEntity
 			}
 			else {
 				// Moving objects compensation
+				// Assumes a grounded jump: rayResult.body is only set by a very recent ground raycast hit
 				let add = new CANNON.Vec3();
 				character.rayResult.body.getVelocityAtWorldPoint(character.rayResult.hitPointWorld, add);
 				body.velocity.vsub(add, body.velocity);

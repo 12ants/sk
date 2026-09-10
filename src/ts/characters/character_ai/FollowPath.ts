@@ -40,7 +40,6 @@ export class FollowPath extends FollowTarget implements ICharacterAI
 		let slowDownAngle = viewVector.clone().normalize().dot(targetToNextNode);
 		let speed = (this.character.controlledObject as unknown as Vehicle).collision.velocity.length();
 
-		// console.log(slowDownAngle, viewVector.length(), speed);
 		if ((slowDownAngle < 0.7 && viewVector.length() < 50 && speed > 10))
 		{
 			this.character.controlledObject.triggerAction('reverse', true);

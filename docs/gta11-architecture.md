@@ -53,7 +53,6 @@ The core split is between the legacy imperative simulation (`src/ts/**`) and the
 - `core/` — `InputManager` (keyboard/mouse/gamepad, now with an explicit `dispose()` for React unmount cleanup), `CameraOperator`, `FunctionLibrary` (math/utility helpers), `InfoStack`, `LoadingManager`, `UIManager`, `KeyBinding`.
 - `interfaces/` — the contracts gluing the above together: `IWorldEntity`, `IUpdatable` (World's per-frame tick registry), `IControllable`, `IInputReceiver`, `ICharacterState`, `ICharacterAI`, `ICollider`, `ISpawnPoint`.
 - `enums/` — `CollisionGroups`, `EntityType`, `SeatType`, `Side`, `Space`.
-- `src/ts/sketchbook.ts` is a leftover barrel export (`export { World } from './world/World'`) from before the migration; nothing currently imports it.
 
 ### Physics import alias
 
