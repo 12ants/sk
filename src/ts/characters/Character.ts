@@ -84,6 +84,10 @@ export class Character extends THREE.Object3D implements IWorldEntity
 	public controlledObject: IControllable;
 	public occupyingSeat: VehicleSeat = null;
 	public vehicleEntryInstance: VehicleEntryInstance = null;
+
+	// Animation clips carry scale tracks on most bones; reapplied after the mixer tick so
+	// user-set bone scales (e.g. from the character customizer) aren't overwritten every frame.
+	public boneScaleOverrides: Map<THREE.Bone, number> = new Map();
 	
 	private physicsEnabled: boolean = true;
 
@@ -422,6 +426,7 @@ export class Character extends THREE.Object3D implements IWorldEntity
 		if (this.physicsEnabled) this.springRotation(timeStep);
 		if (this.physicsEnabled) this.rotateModel();
 		if (this.mixer !== undefined) this.mixer.update(timeStep);
+		if (this.boneScaleOverrides.size > 0) this.boneScaleOverrides.forEach((scale, bone) => bone.scale.setScalar(scale));
 
 		// Sync physics/graphics
 		if (this.physicsEnabled)

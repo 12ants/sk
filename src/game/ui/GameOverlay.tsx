@@ -3,9 +3,11 @@ import type { World } from '../../ts/world/World';
 import { gameUiStore } from './gameUiStore';
 import { GameSettings } from './GameSettings';
 import { TouchControls } from './TouchControls';
+import { CharacterCustomizer } from './CharacterCustomizer';
+import { VehicleLoader } from './VehicleLoader';
 import './game-ui.css';
 
-type Panel = 'Controls' | 'Settings' | 'Messages';
+type Panel = 'Controls' | 'Settings' | 'Messages' | 'Customizer' | 'Vehicles';
 
 const ARROW_KEY_LABELS: Record<string, string> = { W: '↑', A: '←', S: '↓', D: '→' };
 
@@ -66,7 +68,7 @@ export function GameOverlay({ world = null }: { world?: World | null }) {
         <aside className="game-hud" aria-label="Game interface">
           <div className="game-toolbar game-surface">
             <strong className="game-brand">gta11</strong>
-            {(['Controls', 'Settings', ...(state.messages.length ? ['Messages'] : [])] as Panel[]).map((name) => (
+            {(['Controls', 'Settings', 'Customizer', 'Vehicles', ...(state.messages.length ? ['Messages'] : [])] as Panel[]).map((name) => (
               <button key={name} aria-expanded={panel === name} aria-controls="game-panel" onClick={() => panel === name ? closePanel() : setPanel(name)}>
                 {name}{name === 'Messages' ? ` (${state.messages.length})` : ''}
               </button>
@@ -76,7 +78,7 @@ export function GameOverlay({ world = null }: { world?: World | null }) {
           {panel ? (
             <section id="game-panel" className="game-panel game-surface" aria-label={panel}>
               <div className="game-panel-heading"><h2>{panel}</h2><button aria-label={`Close ${panel.toLowerCase()}`} onClick={closePanel}>×</button></div>
-              {panel === 'Settings' ? <GameSettings world={world} /> : panel === 'Controls' ? (
+              {panel === 'Settings' ? <GameSettings world={world} /> : panel === 'Customizer' ? <CharacterCustomizer world={world} /> : panel === 'Vehicles' ? <VehicleLoader world={world} /> : panel === 'Controls' ? (
                 <ul className="game-controls" aria-label="Game controls">
                   <li>
                     <span className="game-keys"><kbd>P</kbd></span>

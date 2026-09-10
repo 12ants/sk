@@ -9,6 +9,13 @@ import { SpringSimulator } from '../physics/spring_simulation/SpringSimulator';
 import { World } from '../world/World';
 import { EntityType } from '../enums/EntityType';
 
+export type CarPhysicsParams = {
+	mass?: number;
+	engineForce?: number;
+	maxSpeed?: number;
+	suspensionStiffness?: number;
+};
+
 export class Car extends Vehicle implements IControllable
 {
 	public entityType: EntityType = EntityType.Car;
@@ -17,6 +24,9 @@ export class Car extends Vehicle implements IControllable
 		return this._speed;
 	}
 	private _speed: number = 0;
+
+	private engineForce: number = 500;
+	private maxSpeed: number = 22;
 
 	// private wheelsDebug: THREE.Mesh[] = [];
 	private steeringWheel: THREE.Object3D;
@@ -94,16 +104,17 @@ export class Car extends Vehicle implements IControllable
 		}
 
 		// Engine
-		const engineForce = 500;
+		const engineForce = this.engineForce;
 		const maxGears = 5;
+		const speedFactor = this.maxSpeed / 22;
 		const gearsMaxSpeeds = {
-			'R': -4,
+			'R': -4 * speedFactor,
 			'0': 0,
-			'1': 5,
-			'2': 9,
-			'3': 13,
-			'4': 17,
-			'5': 22,
+			'1': 5 * speedFactor,
+			'2': 9 * speedFactor,
+			'3': 13 * speedFactor,
+			'4': 17 * speedFactor,
+			'5': 22 * speedFactor,
 		};
 
 		if (this.shiftTimer > 0)
@@ -325,6 +336,21 @@ export class Car extends Vehicle implements IControllable
 				desc: 'Free camera'
 			},
 		]);
+	}
+
+	public configurePhysics(params: CarPhysicsParams): void
+	{
+		if (params.mass !== undefined)
+		{
+			this.collision.mass = params.mass;
+			this.collision.updateMassProperties();
+		}
+		if (params.engineForce !== undefined) this.engineForce = params.engineForce;
+		if (params.maxSpeed !== undefined) this.maxSpeed = params.maxSpeed;
+		if (params.suspensionStiffness !== undefined)
+		{
+			this.rayCastVehicle.wheelInfos.forEach((wheelInfo) => { wheelInfo.suspensionStiffness = params.suspensionStiffness; });
+		}
 	}
 
 	public readCarData(gltf: any): void
