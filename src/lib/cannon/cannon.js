@@ -5972,8 +5972,8 @@ Body.prototype.vectorToLocalFrame = function(worldVector, result){
  */
 Body.prototype.pointToWorldFrame = function(localPoint,result){
     var result = result || new Vec3();
-    this.interpolatedQuaternion.vmult(localPoint,result);
-    result.vadd(this.interpolatedPosition,result);
+    this.quaternion.vmult(localPoint,result);
+    result.vadd(this.position,result);
     return result;
 };
 
@@ -5986,7 +5986,7 @@ Body.prototype.pointToWorldFrame = function(localPoint,result){
  */
 Body.prototype.vectorToWorldFrame = function(localVector, result){
     var result = result || new Vec3();
-    this.interpolatedQuaternion.vmult(localVector, result);
+    this.quaternion.vmult(localVector, result);
     return result;
 };
 

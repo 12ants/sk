@@ -280,9 +280,11 @@ export abstract class Vehicle extends THREE.Object3D implements IWorldEntity
 
 	public setPosition(x: number, y: number, z: number): void
 	{
-		this.collision.position.x = x;
-		this.collision.position.y = y;
-		this.collision.position.z = z;
+		this.collision.position.set(x, y, z);
+		this.collision.previousPosition.copy(this.collision.position);
+		this.collision.interpolatedPosition.copy(this.collision.position);
+		this.collision.aabbNeedsUpdate = true;
+		this.position.set(x, y, z);
 	}
 
 	public setSteeringValue(val: number): void

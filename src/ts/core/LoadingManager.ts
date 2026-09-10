@@ -87,7 +87,7 @@ export class LoadingManager
 		{
 			this.onFinishedCallback = () =>
 			{
-				this.world.update(1, 1);
+				this.world.settleScene();
 	
 				this.world.setTimeScale(0);
 				UIManager.setUserInterfaceVisible(true);

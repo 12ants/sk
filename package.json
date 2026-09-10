@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:map": "node tools/build-small-plane-map.mjs",
+    "build:models": "node tools/build-model-components.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
@@ -29,12 +31,15 @@
     "@types/react-dom": "19.2.3",
     "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "6.1.1",
+    "gltfjsx": "6.5.3",
     "jsdom": "30.0.1",
     "typescript": "7.0.2",
     "vite": "8.2.2",
     "vitest": "5.0.0"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@react-three/drei": "10.7.8",
     "@react-three/fiber": "9.7.0",
     "@react-three/postprocessing": "3.1.1",
     "leva": "0.10.1",
@@ -42,7 +47,6 @@
     "r3f-perf": "^7.2.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "three": "0.186.0",
-    "three-csm": "1.0.2"
+    "three": "0.186.0"
   }
 }

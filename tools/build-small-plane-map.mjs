@@ -19,16 +19,17 @@ const scene = new THREE.Scene();
 const groundSize = 100;
 const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize);
 groundGeo.rotateX(-Math.PI / 2);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x4a7c3f, name: 'ground' });
+const groundMat = new THREE.MeshStandardMaterial({ color: 0xa9a69f, roughness: 0.95, name: 'concrete' });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.name = 'ground';
 scene.add(ground);
 
 // Invisible physics collider (box) matching the ground footprint
-const collider = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial());
+// The scene loader uses scale as Cannon box half-extents.
+const collider = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshStandardMaterial());
 collider.name = 'ground_physics';
 collider.position.set(0, -0.5, 0);
-collider.scale.set(groundSize, 1, groundSize);
+collider.scale.set(groundSize / 2, 0.5, groundSize / 2);
 collider.userData = { data: 'physics', type: 'box' };
 scene.add(collider);
 
@@ -48,13 +49,13 @@ scene.add(scenario);
 // Player spawn point at the scenario origin
 const spawn = new THREE.Object3D();
 spawn.name = 'player_spawn';
-spawn.position.set(0, 1, 0);
+spawn.position.set(0, 0.57, 0);
 spawn.userData = { data: 'spawn', type: 'player' };
 scenario.add(spawn);
 
 // Vehicle spawn points, spread across the ground plane clear of the player
-// and each other. Position.y is 0 (ground level) because VehicleSpawnPoint
-// adds a +1 offset when placing the vehicle, matching the player's y=1.
+// and each other. VehicleSpawnPoint adds clearance above ground level;
+// the loading phase settles the chassis and suspension before showing Play.
 const vehicleSpawns = [
 	{ name: 'car_spawn', type: 'car', position: [15, 0, 15] },
 	{ name: 'heli_spawn', type: 'heli', position: [-20, 0, -15] },

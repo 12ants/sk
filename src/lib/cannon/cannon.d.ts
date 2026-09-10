@@ -548,6 +548,7 @@ declare module CANNON {
         sleepTick(time: number): void;
         updateSolveMassProperties(): void;
         pointToLocalFrame(worldPoint: Vec3, result?: Vec3): Vec3;
+        vectorToLocalFrame(worldVector: Vec3, result?: Vec3): Vec3;
         pointToWorldFrame(localPoint: Vec3, result?: Vec3): Vec3;
         vectorToWorldFrame(localVector: Vec3, result?: Vec3): Vec3;
         addShape(shape: Shape, offset?: Vec3, orientation?: Quaternion): void;

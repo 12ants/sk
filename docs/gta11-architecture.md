@@ -61,7 +61,7 @@ Cannon.js is imported as the bare specifier `cannon` throughout `src/ts/**` (e.g
 
 ### Assets
 
-GLB models are served from `public/assets/*` (Vite public dir → stable root URLs like `/assets/world.glb`), not bundled/imported as modules. The pre-migration `build/` directory (Webpack bundle, `.d.ts` output, asset copies) was removed once checksums confirmed `public/assets/*` matched.
+GLB models are served from `public/assets/*` (Vite public dir, stable root URLs like `/assets/small_plane.glb`). Each asset also has an editable GLTFJSX component in `src/game/models`, generated with `pnpm build:models`. Components retain the binary files for their geometry and textures. The simulation continues loading the original scene metadata for physics, seats, spawns, and animation state machines. The obsolete `world.glb` and Blender source files were removed; they remain recoverable from Git history.
 
 ### Tests
 

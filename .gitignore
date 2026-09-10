@@ -1,5 +1,6 @@
 .vscode
 node_modules
 .worktrees/
+.claude/worktrees/
 dist
 *.tsbuildinfo

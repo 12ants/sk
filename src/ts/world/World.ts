@@ -27,6 +27,7 @@ import { Vehicle } from '../vehicles/Vehicle';
 import { Scenario } from './Scenario';
 import { Sky } from './Sky';
 import { Ocean } from './Ocean';
+import { createConcreteMaterial } from './ConcreteMaterial';
 import type { WorldRuntimeDependencies } from '../../game/runtime/types';
 import { gameUiStore, type ControlRow } from '../../game/ui/gameUiStore';
 
@@ -116,7 +117,7 @@ export class World
 		this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 		this.renderer.toneMappingExposure = 1.0;
 		this.renderer.shadowMap.enabled = true;
-		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+		this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
 		// Three.js scene
 		this.graphicsWorld = new THREE.Scene();
@@ -194,7 +195,7 @@ export class World
 				loadingManager.onFinishedCallback = () =>
 				{
 					if (this.isDisposed) return;
-					this.update(1, 1);
+					this.settleScene();
 					this.setTimeScale(0);
 					UIManager.setUserInterfaceVisible(true);
 					gameUiStore.setWelcome({
@@ -229,6 +230,12 @@ export class World
 		const timeStep = Math.min(unscaledTimeStep * this.params.Time_Scale, 1 / 30);
 		this.update(timeStep, unscaledTimeStep);
 		this.recordFrame(unscaledTimeStep);
+	}
+
+	public settleScene(): void
+	{
+		// Fixed steps let suspension and character ground contact settle before Play.
+		for (let i = 0; i < 120; i++) this.update(this.physicsFrameTime, this.physicsFrameTime);
 	}
 
 	public dispose(): void
@@ -558,6 +565,11 @@ export class World
 				if (child.type === 'Mesh')
 				{
 					Utils.setupMeshProperties(child);
+					if (child.material.name === 'concrete')
+					{
+						child.material.dispose();
+						child.material = createConcreteMaterial();
+					}
 					this.sky.csm.setupMaterial(child.material);
 
 					if (child.material.name === 'ocean')

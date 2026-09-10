@@ -2,7 +2,7 @@ import { Canvas } from '@react-three/fiber';
 import { EffectComposer, FXAA } from '@react-three/postprocessing';
 import { Perf } from 'r3f-perf';
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { ACESFilmicToneMapping } from 'three';
+import { ACESFilmicToneMapping, PCFShadowMap } from 'three';
 import { GameRuntime } from './game/runtime/GameRuntime';
 import { GAME_WORLD_URL } from './game/runtime/assetPaths';
 import { GameOverlay } from './game/ui/GameOverlay';
@@ -36,7 +36,7 @@ export function App() {
   return (
     <main aria-label="gta11 game" className="game-app">
       <Canvas
-        shadows
+        shadows={{ type: PCFShadowMap }}
         dpr={[1, 2]}
         gl={{ antialias: false, toneMapping: ACESFilmicToneMapping }}
         camera={{ fov: 80, near: 0.1, far: 1010 }}
