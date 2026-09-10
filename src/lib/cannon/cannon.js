@@ -14584,3 +14584,20 @@ World.prototype.clearForces = function(){
 },{"../collision/AABB":3,"../collision/ArrayCollisionMatrix":4,"../collision/NaiveBroadphase":7,"../collision/OverlapKeeper":9,"../collision/Ray":10,"../collision/RaycastResult":11,"../equations/ContactEquation":20,"../equations/FrictionEquation":22,"../material/ContactMaterial":25,"../material/Material":26,"../math/Quaternion":29,"../math/Vec3":31,"../objects/Body":32,"../shapes/Shape":44,"../solver/GSSolver":47,"../utils/EventTarget":50,"../utils/TupleDictionary":53,"./Narrowphase":56}]},{},[2])
 (2)
 });
+
+// The UMD wrapper above sets window.CANNON as a side effect (this file has
+// no ES exports of its own). Re-export from it so `import * as CANNON from
+// 'cannon'` works under Vite, which doesn't apply CJS interop to local files.
+const _CANNON = window.CANNON;
+export default _CANNON;
+export const {
+	AABB, ArrayCollisionMatrix, Body, Box, Broadphase, Constraint, ContactEquation,
+	Narrowphase, ConeTwistConstraint, ContactMaterial, ConvexPolyhedron, Cylinder,
+	DistanceConstraint, Equation, EventTarget, FrictionEquation, GSSolver,
+	GridBroadphase, Heightfield, HingeConstraint, LockConstraint, Mat3, Material,
+	NaiveBroadphase, ObjectCollisionMatrix, Pool, Particle, Plane,
+	PointToPointConstraint, Quaternion, Ray, RaycastVehicle, RaycastResult,
+	RigidVehicle, RotationalEquation, RotationalMotorEquation, SAPBroadphase,
+	SPHSystem, Shape, Solver, Sphere, SplitSolver, Spring, Transform, Trimesh,
+	Vec3, Vec3Pool, World,
+} = _CANNON;
