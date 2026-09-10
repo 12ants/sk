@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import * as Utils from '../../core/FunctionLibrary';
 import {ICollider} from '../../interfaces/ICollider';
 import {Object3D} from 'three';
-import { threeToCannon } from '../../../lib/utils/three-to-cannon';
 
 export class TrimeshCollider implements ICollider
 {
@@ -29,7 +28,16 @@ export class TrimeshCollider implements ICollider
 		mat.friction = options.friction;
 		// mat.restitution = 0.7;
 
-		let shape = threeToCannon(this.mesh, {type: threeToCannon.Type.MESH});
+		const geometry = this.mesh.geometry as THREE.BufferGeometry;
+		const positions = geometry.getAttribute('position');
+		const scale = this.mesh.getWorldScale(new THREE.Vector3());
+		const vertices: number[] = [];
+		for (let i = 0; i < positions.count; i++)
+		{
+			vertices.push(positions.getX(i) * scale.x, positions.getY(i) * scale.y, positions.getZ(i) * scale.z);
+		}
+		const indices = geometry.index ? Array.from(geometry.index.array) : Array.from({ length: positions.count }, (_, i) => i);
+		const shape = new CANNON.Trimesh(vertices, indices);
 		// shape['material'] = mat;
 
 		// Add phys sphere

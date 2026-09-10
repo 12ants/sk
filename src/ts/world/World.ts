@@ -1,17 +1,13 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon';
-import Swal from 'sweetalert2';
-import * as $ from 'jquery';
 
 import { CameraOperator } from '../core/CameraOperator';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
-import { FXAAShader  } from 'three/examples/jsm/shaders/FXAAShader';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAShader  } from 'three/examples/jsm/shaders/FXAAShader.js';
 
 import { Detector } from '../../lib/utils/Detector';
-import { Stats } from '../../lib/utils/Stats';
-import * as GUI from '../../lib/utils/dat.gui';
 import { CannonDebugRenderer } from '../../lib/cannon/CannonDebugRenderer';
 import * as _ from 'lodash';
 
@@ -31,13 +27,36 @@ import { Vehicle } from '../vehicles/Vehicle';
 import { Scenario } from './Scenario';
 import { Sky } from './Sky';
 import { Ocean } from './Ocean';
+import type { WorldRuntimeDependencies } from '../../game/runtime/types';
+import { gameUiStore, type ControlRow } from '../../game/ui/gameUiStore';
+
+export type WorldOptions = {
+	worldScenePath?: string;
+	runtime?: WorldRuntimeDependencies;
+};
+
+export type WorldSettings = {
+	Pointer_Lock: boolean;
+	Mouse_Sensitivity: number;
+	Time_Scale: number;
+	Shadows: boolean;
+	FXAA: boolean;
+	Debug_Physics: boolean;
+	Debug_FPS: boolean;
+	Sun_Elevation: number;
+	Sun_Rotation: number;
+};
+
+export type WorldSettingsSnapshot = Readonly<WorldSettings & { scenarioId: string | null }>;
 
 export class World
 {
 	public renderer: THREE.WebGLRenderer;
 	public camera: THREE.PerspectiveCamera;
+	public canvas: HTMLCanvasElement;
+	public readonly externallyManaged: boolean;
+	public isDisposed: boolean = false;
 	public composer: any;
-	public stats: Stats;
 	public graphicsWorld: THREE.Scene;
 	public sky: Sky;
 	public physicsWorld: CANNON.World;
@@ -51,77 +70,76 @@ export class World
 	public requestDelta: number;
 	public sinceLastFrame: number;
 	public justRendered: boolean;
-	public params: any;
+	public params: WorldSettings;
 	public inputManager: InputManager;
 	public cameraOperator: CameraOperator;
 	public timeScaleTarget: number = 1;
 	public console: InfoStack;
-	public cannonDebugRenderer: CannonDebugRenderer;
+	public cannonDebugRenderer: typeof CannonDebugRenderer.prototype;
 	public scenarios: Scenario[] = [];
 	public characters: Character[] = [];
 	public vehicles: Vehicle[] = [];
 	public paths: Path[] = [];
-	public scenarioGUIFolder: any;
 	public updatables: IUpdatable[] = [];
 
 	private lastScenarioID: string;
+	private animationFrameId?: number;
+	private onWindowResize?: () => void;
+	private ownedDomNodes: Element[] = [];
+	private ownedSceneResources = new Set<{ dispose(): void }>();
+	private settingsSnapshot: WorldSettingsSnapshot;
+	private settingsListeners = new Set<() => void>();
+	private fpsElapsed = 0;
+	private fpsFrames = 0;
 
-	constructor(worldScenePath?: any)
+	constructor(options?: WorldOptions);
+	/** @deprecated Supply WorldOptions with an R3F runtime in React applications. */
+	constructor(worldScenePath?: string);
+	constructor(options: WorldOptions | string = {})
 	{
-		const scope = this;
+		const { worldScenePath, runtime } = typeof options === 'string' ? { worldScenePath: options } : options;
+		this.externallyManaged = runtime !== undefined;
 
 		// WebGL not supported
-		if (!Detector.webgl)
+		if (!this.externallyManaged && !Detector.webgl)
 		{
-			Swal.fire({
-				icon: 'warning',
-				title: 'WebGL compatibility',
-				text: 'This browser doesn\'t seem to have the required WebGL capabilities. The application may not work correctly.',
-				footer: '<a href="https://get.webgl.org/" target="_blank">Click here for more information</a>',
-				showConfirmButton: false,
-				buttonsStyling: false
-			});
+			gameUiStore.setError('This browser does not support the WebGL capabilities required by gta11.');
 		}
 
 		// Renderer
-		this.renderer = new THREE.WebGLRenderer();
-		this.renderer.setPixelRatio(window.devicePixelRatio);
-		this.renderer.setSize(window.innerWidth, window.innerHeight);
+		this.renderer = runtime?.renderer ?? new THREE.WebGLRenderer();
+		this.camera = runtime?.camera ?? new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1010);
+		this.canvas = runtime?.canvas ?? this.renderer.domElement;
 		this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 		this.renderer.toneMappingExposure = 1.0;
 		this.renderer.shadowMap.enabled = true;
 		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-		this.generateHTML();
-
-		// Auto window resize
-		function onWindowResize(): void
-		{
-			scope.camera.aspect = window.innerWidth / window.innerHeight;
-			scope.camera.updateProjectionMatrix();
-			scope.renderer.setSize(window.innerWidth, window.innerHeight);
-			fxaaPass.uniforms['resolution'].value.set(1 / (window.innerWidth * pixelRatio), 1 / (window.innerHeight * pixelRatio));
-			scope.composer.setSize(window.innerWidth * pixelRatio, window.innerHeight * pixelRatio);
-		}
-		window.addEventListener('resize', onWindowResize, false);
-
 		// Three.js scene
 		this.graphicsWorld = new THREE.Scene();
-		this.camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1010);
-
-		// Passes
-		let renderPass = new RenderPass( this.graphicsWorld, this.camera );
-		let fxaaPass = new ShaderPass( FXAAShader );
-
-		// FXAA
-		let pixelRatio = this.renderer.getPixelRatio();
-		fxaaPass.material['uniforms'].resolution.value.x = 1 / ( window.innerWidth * pixelRatio );
-		fxaaPass.material['uniforms'].resolution.value.y = 1 / ( window.innerHeight * pixelRatio );
-
-		// Composer
-		this.composer = new EffectComposer( this.renderer );
-		this.composer.addPass( renderPass );
-		this.composer.addPass( fxaaPass );
+		if (!this.externallyManaged)
+		{
+			this.renderer.setPixelRatio(window.devicePixelRatio);
+			this.renderer.setSize(window.innerWidth, window.innerHeight);
+			document.body.appendChild(this.canvas);
+			this.ownedDomNodes.push(this.canvas);
+			const renderPass = new RenderPass(this.graphicsWorld, this.camera);
+			const fxaaPass = new ShaderPass(FXAAShader);
+			const pixelRatio = this.renderer.getPixelRatio();
+			fxaaPass.uniforms.resolution.value.set(1 / (window.innerWidth * pixelRatio), 1 / (window.innerHeight * pixelRatio));
+			this.composer = new EffectComposer(this.renderer);
+			this.composer.addPass(renderPass);
+			this.composer.addPass(fxaaPass);
+			this.onWindowResize = () => {
+				this.camera.aspect = window.innerWidth / window.innerHeight;
+				this.camera.updateProjectionMatrix();
+				this.renderer.setSize(window.innerWidth, window.innerHeight);
+				fxaaPass.uniforms.resolution.value.set(1 / (window.innerWidth * pixelRatio), 1 / (window.innerHeight * pixelRatio));
+				this.composer.setSize(window.innerWidth, window.innerHeight);
+			};
+			window.addEventListener('resize', this.onWindowResize, false);
+			this.clock = new THREE.Clock();
+		}
 
 		// Physics
 		this.physicsWorld = new CANNON.World();
@@ -136,67 +154,116 @@ export class World
 		this.physicsMaxPrediction = this.physicsFrameRate;
 
 		// RenderLoop
-		this.clock = new THREE.Clock();
 		this.renderDelta = 0;
 		this.logicDelta = 0;
 		this.sinceLastFrame = 0;
 		this.justRendered = false;
 
-		// Stats (FPS, Frame time, Memory)
-		this.stats = Stats();
-		// Create right panel GUI
-		this.createParamsGUI(scope);
+		this.params = {
+			Pointer_Lock: true,
+			Mouse_Sensitivity: 0.3,
+			Time_Scale: 1,
+			Shadows: true,
+			FXAA: true,
+			Debug_Physics: false,
+			Debug_FPS: false,
+			Sun_Elevation: 50,
+			Sun_Rotation: 145,
+		};
+		this.publishSettings();
+		gameUiStore.setStatsVisible(false);
+		gameUiStore.setFps(null);
 
 		// Initialization
-		this.inputManager = new InputManager(this, this.renderer.domElement);
-		this.cameraOperator = new CameraOperator(this, this.camera, this.params.Mouse_Sensitivity);
-		this.sky = new Sky(this);
-		
-		// Load scene if path is supplied
-		if (worldScenePath !== undefined)
+		try
 		{
-			let loadingManager = new LoadingManager(this);
-			loadingManager.onFinishedCallback = () =>
-			{
-				this.update(1, 1);
-				this.setTimeScale(1);
-	
-				Swal.fire({
-					title: 'Welcome to Sketchbook!',
-					text: 'Feel free to explore the world and interact with available vehicles. There are also various scenarios ready to launch from the right panel.',
-					footer: '<a href="https://github.com/swift502/Sketchbook" target="_blank">GitHub page</a><a href="https://discord.gg/fGuEqCe" target="_blank">Discord server</a>',
-					confirmButtonText: 'Okay',
-					buttonsStyling: false,
-					onClose: () => {
-						UIManager.setUserInterfaceVisible(true);
-					}
-				});
-			};
-			loadingManager.loadGLTF(worldScenePath, (gltf) =>
-				{
-					this.loadScene(loadingManager, gltf);
-				}
-			);
-		}
-		else
-		{
-			UIManager.setUserInterfaceVisible(true);
-			UIManager.setLoadingScreenVisible(false);
-			Swal.fire({
-				icon: 'success',
-				title: 'Hello world!',
-				text: 'Empty Sketchbook world was succesfully initialized. Enjoy the blueness of the sky.',
-				buttonsStyling: false
-			});
-		}
+			this.inputManager = new InputManager(this, this.canvas);
+			this.cameraOperator = new CameraOperator(this, this.camera, this.params.Mouse_Sensitivity);
+			this.sky = new Sky(this);
 
-		this.render(this);
+			// Load scene if path is supplied
+			if (worldScenePath !== undefined)
+			{
+				let loadingManager = new LoadingManager(this);
+				loadingManager.onFinishedCallback = () =>
+				{
+					if (this.isDisposed) return;
+					this.update(1, 1);
+					this.setTimeScale(0);
+					UIManager.setUserInterfaceVisible(true);
+					gameUiStore.setWelcome({
+						title: 'Welcome to gta11',
+						content: 'Explore the world and interact with available vehicles. Open Settings to launch a scenario, or Controls for the current key bindings.',
+					});
+				};
+				loadingManager.loadGLTF(worldScenePath, (gltf) =>
+					{
+						this.loadScene(loadingManager, gltf);
+					}
+				);
+			}
+			else
+			{
+				UIManager.setUserInterfaceVisible(true);
+				UIManager.setLoadingScreenVisible(false);
+			}
+
+			if (!this.externallyManaged) this.render(this);
+		}
+		catch (error)
+		{
+			this.dispose();
+			throw error;
+		}
+	}
+
+	public tick(unscaledTimeStep: number): void
+	{
+		if (this.isDisposed) return;
+		const timeStep = Math.min(unscaledTimeStep * this.params.Time_Scale, 1 / 30);
+		this.update(timeStep, unscaledTimeStep);
+		this.recordFrame(unscaledTimeStep);
+	}
+
+	public dispose(): void
+	{
+		if (this.isDisposed) return;
+		this.isDisposed = true;
+		this.inputManager?.dispose();
+		if (this.animationFrameId !== undefined) cancelAnimationFrame(this.animationFrameId);
+		if (this.onWindowResize) window.removeEventListener('resize', this.onWindowResize, false);
+		this.cannonDebugRenderer?.dispose();
+		this.cannonDebugRenderer = undefined;
+
+		// World owns its scene resources; the renderer and canvas remain with R3F.
+		this.trackSceneResources(this.graphicsWorld);
+		this.clearEntities();
+		this.sky?.csm.remove();
+		this.sky?.csm.dispose();
+		this.ownedSceneResources.forEach((resource) => resource.dispose());
+		this.ownedSceneResources.clear();
+		this.graphicsWorld.clear();
+		this.graphicsWorld.removeFromParent();
+		for (const body of [...this.physicsWorld.bodies]) this.physicsWorld.remove(body);
+		this.updatables.length = 0;
+		this.paths.length = 0;
+		this.scenarios.length = 0;
+		this.settingsListeners.clear();
+		this.ownedDomNodes.forEach((element) => element.remove());
+		this.ownedDomNodes.length = 0;
+		if (!this.externallyManaged)
+		{
+			this.composer?.passes.forEach((pass) => pass.dispose?.());
+			this.composer?.dispose();
+			this.renderer.dispose();
+		}
 	}
 
 	// Update
 	// Handles all logic updates.
 	public update(timeStep: number, unscaledTimeStep: number): void
 	{
+		if (this.isDisposed) return;
 		this.updatePhysics(timeStep);
 
 		// Update registred objects
@@ -265,9 +332,10 @@ export class World
 	 */
 	public render(world: World): void
 	{
+		if (this.externallyManaged || this.isDisposed) return;
 		this.requestDelta = this.clock.getDelta();
 
-		requestAnimationFrame(() =>
+		this.animationFrameId = requestAnimationFrame(() =>
 		{
 			world.render(world);
 		});
@@ -288,9 +356,7 @@ export class World
 		this.sinceLastFrame += this.requestDelta + this.renderDelta + this.logicDelta;
 		this.sinceLastFrame %= interval;
 
-		// Stats end
-		this.stats.end();
-		this.stats.begin();
+		this.recordFrame(unscaledTimeStep);
 
 		// Actual rendering with a FXAA ON/OFF switch
 		if (this.params.FXAA) this.composer.render();
@@ -304,10 +370,109 @@ export class World
 	{
 		this.params.Time_Scale = value;
 		this.timeScaleTarget = value;
+		this.publishSettings();
+	}
+
+	public getSettingsSnapshot = (): WorldSettingsSnapshot => this.settingsSnapshot;
+
+	public subscribeSettings = (listener: () => void): (() => void) => {
+		this.settingsListeners.add(listener);
+		return () => this.settingsListeners.delete(listener);
+	};
+
+	private publishSettings(): void
+	{
+		const next: WorldSettingsSnapshot = Object.freeze({ ...this.params, Time_Scale: this.timeScaleTarget, scenarioId: this.lastScenarioID ?? null });
+		if (this.settingsSnapshot && Object.keys(next).every((key) => next[key] === this.settingsSnapshot[key])) return;
+		this.settingsSnapshot = next;
+		this.settingsListeners.forEach((listener) => listener());
+	}
+
+	public getScenarioOptions(): Array<{ id: string; name: string }>
+	{
+		return this.scenarios.filter((scenario) => !scenario.invisible).map(({ id, name }) => ({ id, name: name || id }));
+	}
+
+	public setFxaa(enabled: boolean): void
+	{
+		this.params.FXAA = enabled;
+		this.publishSettings();
+	}
+
+	public setShadows(enabled: boolean): void
+	{
+		this.params.Shadows = enabled;
+		this.sky.csm.lights.forEach((light) => { light.castShadow = enabled; });
+		this.publishSettings();
+	}
+
+	public setPointerLock(enabled: boolean): void
+	{
+		this.params.Pointer_Lock = enabled;
+		this.inputManager.setPointerLock(enabled);
+		this.publishSettings();
+	}
+
+	public setMouseSensitivity(value: number): void
+	{
+		this.params.Mouse_Sensitivity = value;
+		this.cameraOperator.setSensitivity(value, value * 0.8);
+		this.publishSettings();
+	}
+
+	public setDebugPhysics(enabled: boolean): void
+	{
+		this.params.Debug_Physics = enabled;
+		if (enabled && !this.cannonDebugRenderer) this.cannonDebugRenderer = new CannonDebugRenderer(this.graphicsWorld, this.physicsWorld);
+		if (!enabled)
+		{
+			this.cannonDebugRenderer?.dispose();
+			this.cannonDebugRenderer = undefined;
+		}
+		this.characters.forEach((character) => { character.raycastBox.visible = enabled; });
+		this.publishSettings();
+	}
+
+	public setDebugFps(enabled: boolean): void
+	{
+		this.params.Debug_FPS = enabled;
+		this.fpsElapsed = 0;
+		this.fpsFrames = 0;
+		gameUiStore.setFps(null);
+		UIManager.setFPSVisible(enabled);
+		this.publishSettings();
+	}
+
+	public setSunElevation(value: number): void
+	{
+		this.params.Sun_Elevation = value;
+		this.sky.phi = value;
+		this.publishSettings();
+	}
+
+	public setSunRotation(value: number): void
+	{
+		this.params.Sun_Rotation = value;
+		this.sky.theta = value;
+		this.publishSettings();
+	}
+
+	private recordFrame(delta: number): void
+	{
+		if (!this.params.Debug_FPS || delta <= 0) return;
+		this.fpsElapsed += delta;
+		this.fpsFrames++;
+		if (this.fpsElapsed >= 0.5)
+		{
+			gameUiStore.setFps(Math.round(this.fpsFrames / this.fpsElapsed));
+			this.fpsElapsed = 0;
+			this.fpsFrames = 0;
+		}
 	}
 
 	public add(worldEntity: IWorldEntity): void
 	{
+		if (this.isDisposed) return;
 		worldEntity.addToWorld(this);
 		this.registerUpdatable(worldEntity);
 	}
@@ -320,8 +485,30 @@ export class World
 
 	public remove(worldEntity: IWorldEntity): void
 	{
+		const previousChildren = [...this.graphicsWorld.children];
 		worldEntity.removeFromWorld(this);
+		// Entities can own separate roots, such as vehicle wheels and character raycast helpers.
+		for (const child of previousChildren)
+		{
+			if (child.parent !== this.graphicsWorld) this.trackSceneResources(child);
+		}
 		this.unregisterUpdatable(worldEntity);
+	}
+
+	private trackSceneResources(root: THREE.Object3D): void
+	{
+		// Retain ownership across scenario changes; shared resources stay usable until world disposal.
+		root.traverse((object: any) => {
+			if (object.geometry) this.ownedSceneResources.add(object.geometry);
+			if (object.skeleton) this.ownedSceneResources.add(object.skeleton);
+			if (object.shadow) this.ownedSceneResources.add(object.shadow);
+			const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+			for (const material of materials) {
+				this.ownedSceneResources.add(material);
+				for (const value of Object.values(material) as any[]) if (value?.isTexture) this.ownedSceneResources.add(value);
+				for (const uniform of Object.values(material.uniforms ?? {}) as any[]) if (uniform.value?.isTexture) this.ownedSceneResources.add(uniform.value);
+			}
+		});
 	}
 
 	public unregisterUpdatable(registree: IUpdatable): void
@@ -331,6 +518,7 @@ export class World
 
 	public loadScene(loadingManager: LoadingManager, gltf: any): void
 	{
+		if (this.isDisposed) return;
 		gltf.scene.traverse((child) => {
 			if (child.hasOwnProperty('userData'))
 			{
@@ -403,7 +591,9 @@ export class World
 	
 	public launchScenario(scenarioID: string, loadingManager?: LoadingManager): void
 	{
+		if (this.isDisposed) return;
 		this.lastScenarioID = scenarioID;
+		this.publishSettings();
 
 		this.clearEntities();
 
@@ -459,163 +649,11 @@ export class World
 			if (this.timeScaleTarget < timeScaleBottomLimit) this.timeScaleTarget = timeScaleBottomLimit;
 			this.timeScaleTarget = Math.min(this.timeScaleTarget, 1);
 		}
+		this.publishSettings();
 	}
 
-	public updateControls(controls: any): void
+	public updateControls(controls: ControlRow[]): void
 	{
-		let html = '';
-		html += '<h2 class="controls-title">Controls:</h2>';
-
-		controls.forEach((row) =>
-		{
-			html += '<div class="ctrl-row">';
-			row.keys.forEach((key) => {
-				if (key === '+' || key === 'and' || key === 'or' || key === '&') html += '&nbsp;' + key + '&nbsp;';
-				else html += '<span class="ctrl-key">' + key + '</span>';
-			});
-
-			html += '<span class="ctrl-desc">' + row.desc + '</span></div>';
-		});
-
-		document.getElementById('controls').innerHTML = html;
-	}
-
-	private generateHTML(): void
-	{
-		// Fonts
-		$('head').append('<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&display=swap" rel="stylesheet">');
-		$('head').append('<link href="https://fonts.googleapis.com/css2?family=Solway:wght@400;500;700&display=swap" rel="stylesheet">');
-		$('head').append('<link href="https://fonts.googleapis.com/css2?family=Cutive+Mono&display=swap" rel="stylesheet">');
-
-		// Loader
-		$(`	<div id="loading-screen">
-				<div id="loading-screen-background"></div>
-				<h1 id="main-title" class="sb-font">Sketchbook 0.4</h1>
-				<div class="cubeWrap">
-					<div class="cube">
-						<div class="faces1"></div>
-						<div class="faces2"></div>     
-					</div> 
-				</div> 
-				<div id="loading-text">Loading...</div>
-			</div>
-		`).appendTo('body');
-
-		// UI
-		$(`	<div id="ui-container" style="display: none;">
-				<div class="github-corner">
-					<a href="https://github.com/swift502/Sketchbook" target="_blank" title="Fork me on GitHub">
-						<svg viewbox="0 0 100 100" fill="currentColor">
-							<title>Fork me on GitHub</title>
-							<path d="M0 0v100h100V0H0zm60 70.2h.2c1 2.7.3 4.7 0 5.2 1.4 1.4 2 3 2 5.2 0 7.4-4.4 9-8.7 9.5.7.7 1.3 2
-							1.3 3.7V99c0 .5 1.4 1 1.4 1H44s1.2-.5 1.2-1v-3.8c-3.5 1.4-5.2-.8-5.2-.8-1.5-2-3-2-3-2-2-.5-.2-1-.2-1
-							2-.7 3.5.8 3.5.8 2 1.7 4 1 5 .3.2-1.2.7-2 1.2-2.4-4.3-.4-8.8-2-8.8-9.4 0-2 .7-4 2-5.2-.2-.5-1-2.5.2-5
-							0 0 1.5-.6 5.2 1.8 1.5-.4 3.2-.6 4.8-.6 1.6 0 3.3.2 4.8.7 2.8-2 4.4-2 5-2z"></path>
-						</svg>
-					</a>
-				</div>
-				<div class="left-panel">
-					<div id="controls" class="panel-segment flex-bottom"></div>
-				</div>
-			</div>
-		`).appendTo('body');
-
-		// Canvas
-		document.body.appendChild(this.renderer.domElement);
-		this.renderer.domElement.id = 'canvas';
-	}
-
-	private createParamsGUI(scope: World): void
-	{
-		this.params = {
-			Pointer_Lock: true,
-			Mouse_Sensitivity: 0.3,
-			Time_Scale: 1,
-			Shadows: true,
-			FXAA: true,
-			Debug_Physics: false,
-			Debug_FPS: false,
-			Sun_Elevation: 50,
-			Sun_Rotation: 145,
-		};
-
-		const gui = new GUI.GUI();
-
-		// Scenario
-		this.scenarioGUIFolder = gui.addFolder('Scenarios');
-		this.scenarioGUIFolder.open();
-
-		// World
-		let worldFolder = gui.addFolder('World');
-		worldFolder.add(this.params, 'Time_Scale', 0, 1).listen()
-			.onChange((value) =>
-			{
-				scope.timeScaleTarget = value;
-			});
-		worldFolder.add(this.params, 'Sun_Elevation', 0, 180).listen()
-			.onChange((value) =>
-			{
-				scope.sky.phi = value;
-			});
-		worldFolder.add(this.params, 'Sun_Rotation', 0, 360).listen()
-			.onChange((value) =>
-			{
-				scope.sky.theta = value;
-			});
-
-		// Input
-		let settingsFolder = gui.addFolder('Settings');
-		settingsFolder.add(this.params, 'FXAA');
-		settingsFolder.add(this.params, 'Shadows')
-			.onChange((enabled) =>
-			{
-				if (enabled)
-				{
-					this.sky.csm.lights.forEach((light) => {
-						light.castShadow = true;
-					});
-				}
-				else
-				{
-					this.sky.csm.lights.forEach((light) => {
-						light.castShadow = false;
-					});
-				}
-			});
-		settingsFolder.add(this.params, 'Pointer_Lock')
-			.onChange((enabled) =>
-			{
-				scope.inputManager.setPointerLock(enabled);
-			});
-		settingsFolder.add(this.params, 'Mouse_Sensitivity', 0, 1)
-			.onChange((value) =>
-			{
-				scope.cameraOperator.setSensitivity(value, value * 0.8);
-			});
-		settingsFolder.add(this.params, 'Debug_Physics')
-			.onChange((enabled) =>
-			{
-				if (enabled)
-				{
-					this.cannonDebugRenderer = new CannonDebugRenderer( this.graphicsWorld, this.physicsWorld );
-				}
-				else
-				{
-					this.cannonDebugRenderer.clearMeshes();
-					this.cannonDebugRenderer = undefined;
-				}
-
-				scope.characters.forEach((char) =>
-				{
-					char.raycastBox.visible = enabled;
-				});
-			});
-		settingsFolder.add(this.params, 'Debug_FPS')
-			.onChange((enabled) =>
-			{
-				UIManager.setFPSVisible(enabled);
-			});
-
-		gui.open();
+		gameUiStore.setControls(controls);
 	}
 }

@@ -26,6 +26,7 @@ export var CannonDebugRenderer = function(scene, world, options){
     this._boxGeometry = new THREE.BoxGeometry(1, 1, 1);
     this._planeGeometry = new THREE.PlaneGeometry( 10, 10, 10, 10 );
     this._cylinderGeometry = new THREE.CylinderGeometry( 1, 1, 10, 10 );
+    this._sharedGeometries = new Set([this._sphereGeometry, this._boxGeometry, this._planeGeometry, this._cylinderGeometry]);
 };
 
 CannonDebugRenderer.prototype = {
@@ -75,7 +76,7 @@ CannonDebugRenderer.prototype = {
         for(var i = meshIndex; i < meshes.length; i++){
             var mesh = meshes[i];
             if(mesh){
-                this.scene.remove(mesh);
+                this._removeMesh(mesh);
             }
         }
 
@@ -86,7 +87,7 @@ CannonDebugRenderer.prototype = {
         var mesh = this._meshes[index];
         if(!this._typeMatch(mesh, shape)){
             if(mesh){
-                this.scene.remove(mesh);
+                this._removeMesh(mesh);
             }
             mesh = this._meshes[index] = this._createMesh(shape);
         }
@@ -131,12 +132,14 @@ CannonDebugRenderer.prototype = {
 
         case CANNON.Shape.types.CONVEXPOLYHEDRON:
             // Create mesh
-            var geo = new THREE.Geometry();
+            var geo = new THREE.BufferGeometry();
+            var vertices = [];
+            var indices = [];
 
             // Add vertices
             for (var i = 0; i < shape.vertices.length; i++) {
                 var v = shape.vertices[i];
-                geo.vertices.push(new THREE.Vector3(v.x, v.y, v.z));
+                vertices.push(v.x, v.y, v.z);
             }
 
             for(var i=0; i < shape.faces.length; i++){
@@ -147,39 +150,38 @@ CannonDebugRenderer.prototype = {
                 for (var j = 1; j < face.length - 1; j++) {
                     var b = face[j];
                     var c = face[j + 1];
-                    geo.faces.push(new THREE.Face3(a, b, c));
+                    indices.push(a, b, c);
                 }
             }
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geo.setIndex(indices);
             geo.computeBoundingSphere();
-            geo.computeFaceNormals();
+            geo.computeVertexNormals();
 
             mesh = new THREE.Mesh(geo, cyan);
             shape.geometryId = geo.id;
             break;
 
         case CANNON.Shape.types.TRIMESH:
-            var geometry = new THREE.Geometry();
+            var geometry = new THREE.BufferGeometry();
+            var vertices = [];
             var v0 = this.tmpVec0;
             var v1 = this.tmpVec1;
             var v2 = this.tmpVec2;
             for (var i = 0; i < shape.indices.length / 3; i++) {
                 shape.getTriangleVertices(i, v0, v1, v2);
-                geometry.vertices.push(
-                    new THREE.Vector3(v0.x, v0.y, v0.z),
-                    new THREE.Vector3(v1.x, v1.y, v1.z),
-                    new THREE.Vector3(v2.x, v2.y, v2.z)
-                );
-                var j = geometry.vertices.length - 3;
-                geometry.faces.push(new THREE.Face3(j, j+1, j+2));
+                vertices.push(v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z);
             }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
             geometry.computeBoundingSphere();
-            geometry.computeFaceNormals();
+            geometry.computeVertexNormals();
             mesh = new THREE.Mesh(geometry, purple);
             shape.geometryId = geometry.id;
             break;
 
         case CANNON.Shape.types.HEIGHTFIELD:
-            var geometry = new THREE.Geometry();
+            var geometry = new THREE.BufferGeometry();
+            var vertices = [];
 
             var v0 = this.tmpVec0;
             var v1 = this.tmpVec1;
@@ -194,18 +196,13 @@ CannonDebugRenderer.prototype = {
                         v0.vadd(shape.pillarOffset, v0);
                         v1.vadd(shape.pillarOffset, v1);
                         v2.vadd(shape.pillarOffset, v2);
-                        geometry.vertices.push(
-                            new THREE.Vector3(v0.x, v0.y, v0.z),
-                            new THREE.Vector3(v1.x, v1.y, v1.z),
-                            new THREE.Vector3(v2.x, v2.y, v2.z)
-                        );
-                        var i = geometry.vertices.length - 3;
-                        geometry.faces.push(new THREE.Face3(i, i+1, i+2));
+                        vertices.push(v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z);
                     }
                 }
             }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
             geometry.computeBoundingSphere();
-            geometry.computeFaceNormals();
+            geometry.computeVertexNormals();
             mesh = new THREE.Mesh(geometry, purple);
             shape.geometryId = geometry.id;
             break;
@@ -246,10 +243,23 @@ CannonDebugRenderer.prototype = {
         }
     },
 
+    _removeMesh: function(mesh){
+        this.scene.remove(mesh);
+        if (!this._sharedGeometries.has(mesh.geometry)) mesh.geometry.dispose();
+    },
+
     clearMeshes: function(){
-        this._meshes.forEach((mesh) => {
-            this.scene.remove(mesh);
-        });
+        this._meshes.forEach((mesh) => this._removeMesh(mesh));
+        this._meshes.length = 0;
+    },
+
+    dispose: function(){
+        var resources = new Set([
+            this._sphereGeometry, this._boxGeometry, this._planeGeometry, this._cylinderGeometry,
+            this._boxMaterial, this._triMaterial, this._sphereMaterial
+        ]);
+        this.clearMeshes();
+        resources.forEach((resource) => resource.dispose());
     }
 
 };

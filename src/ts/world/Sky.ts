@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { World } from './World';
 import { EntityType } from '../enums/EntityType';
 import { IUpdatable } from '../interfaces/IUpdatable';
-import { default as CSM } from 'three-csm';
+import { CSM } from 'three/examples/jsm/csm/CSM.js';
 
 export class Sky extends THREE.Object3D implements IUpdatable
 {
@@ -34,6 +34,7 @@ export class Sky extends THREE.Object3D implements IUpdatable
 	private skyMaterial: THREE.ShaderMaterial;
 
 	private world: World;
+	private cameraProjection: THREE.Matrix4 = new THREE.Matrix4();
 
 	constructor(world: World)
 	{
@@ -51,7 +52,7 @@ export class Sky extends THREE.Object3D implements IUpdatable
 
 		// Mesh
 		this.skyMesh = new THREE.Mesh(
-			new THREE.SphereBufferGeometry(1000, 24, 12),
+			new THREE.SphereGeometry(1000, 24, 12),
 			this.skyMaterial
 		);
 		this.attach(this.skyMesh);
@@ -64,32 +65,16 @@ export class Sky extends THREE.Object3D implements IUpdatable
 		this.hemiLight.position.set( 0, 50, 0 );
 		this.world.graphicsWorld.add( this.hemiLight );
 
-		// CSM
-		// New version
-		// let splitsCallback = (amount, near, far, target) =>
-		// {
-		// 	for (let i = amount - 1; i >= 0; i--)
-		// 	{
-		// 		target.push(Math.pow(1 / 3, i));
-		// 	}
-		// };
-
-		// Legacy
-		let splitsCallback = (amount, near, far) =>
+		const splitsCallback = (amount, near, far, target) =>
 		{
-			let arr = [];
-
 			for (let i = amount - 1; i >= 0; i--)
 			{
-				arr.push(Math.pow(1 / 4, i));
+				target.push(Math.pow(1 / 4, i));
 			}
-
-			return arr;
 		};
 
 		this.csm = new CSM({
-			fov: 80,
-			far: 250,	// maxFar
+			maxFar: 250,
 			lightIntensity: 2.5,
 			cascades: 3,
 			shadowMapSize: 2048,
@@ -99,6 +84,7 @@ export class Sky extends THREE.Object3D implements IUpdatable
 			customSplitsCallback: splitsCallback
 		});
 		this.csm.fade = true;
+		this.cameraProjection.copy(world.camera.projectionMatrix);
 
 		this.refreshSunPosition();
 		
@@ -111,7 +97,13 @@ export class Sky extends THREE.Object3D implements IUpdatable
 		this.position.copy(this.world.camera.position);
 		this.refreshSunPosition();
 
-		this.csm.update(this.world.camera.matrix);
+		if (!this.cameraProjection.equals(this.world.camera.projectionMatrix))
+		{
+			this.cameraProjection.copy(this.world.camera.projectionMatrix);
+			this.csm.updateFrustums();
+		}
+		this.world.camera.updateMatrixWorld();
+		this.csm.update();
 		this.csm.lightDirection = new THREE.Vector3(-this.sunPosition.x, -this.sunPosition.y, -this.sunPosition.z).normalize();
 	}
 

@@ -3,6 +3,7 @@ import { KeyBinding } from '../core/KeyBinding';
 export interface IInputReceiver
 {
 	actions: { [action: string]: KeyBinding };
+	resetControls?(): void;
 
 	handleKeyboardEvent(event: KeyboardEvent, code: string, pressed: boolean): void;
 	handleMouseButton(event: MouseEvent, code: string, pressed: boolean): void;
