@@ -52,14 +52,14 @@ spawn.position.set(0, 1, 0);
 spawn.userData = { data: 'spawn', type: 'player' };
 scenario.add(spawn);
 
-const exporter = new GLTFExporter();
-exporter.parse(
+const outPath = new URL('../public/assets/small_plane.glb', import.meta.url);
+
+new GLTFExporter().parse(
 	scene,
-	(result) => {
+	async (result) => {
 		const buffer = Buffer.from(result);
-		writeFile(new URL('../public/assets/small_plane.glb', import.meta.url), buffer).then(() => {
-			console.log('wrote public/assets/small_plane.glb', buffer.length, 'bytes');
-		});
+		await writeFile(outPath, buffer);
+		console.log('wrote public/assets/small_plane.glb', buffer.length, 'bytes');
 	},
 	(error) => {
 		console.error(error);
