@@ -28,7 +28,7 @@ export class InputManager implements IUpdatable
 	{
 		this.world = world;
 		this.pointerLock = world.params.Pointer_Lock;
-		this.domElement = domElement || document.body;
+		this.domElement = domElement;
 		this.isLocked = false;
 		
 		// Bindings for later event use

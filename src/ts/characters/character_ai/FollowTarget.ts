@@ -53,7 +53,6 @@ export class FollowTarget implements ICharacterAI
 			let angle = Utils.getSignedAngleBetweenVectors(forward, viewVector);
 
 			let goingForward = forward.dot(Utils.threeVector((this.character.controlledObject as unknown as Vehicle).collision.velocity)) > 0;
-			let speed = (this.character.controlledObject as unknown as Vehicle).collision.velocity.length();
 
 			if (forward.dot(viewVector) < 0.0)
 			{

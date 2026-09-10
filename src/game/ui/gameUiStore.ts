@@ -71,9 +71,3 @@ class GameUiStore {
 }
 
 export const gameUiStore = new GameUiStore();
-
-export const setLoading = gameUiStore.setLoading;
-export const setInterfaceVisible = gameUiStore.setInterfaceVisible;
-export const setError = gameUiStore.setError;
-export const setControls = gameUiStore.setControls;
-export const pushMessage = gameUiStore.pushMessage;
