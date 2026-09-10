@@ -5,7 +5,6 @@ import { configDefaults, defineConfig } from 'vitest/config';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 7777,
     host: true,
     allowedHosts: true,
     forwardConsole: {

@@ -13,14 +13,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/swift502/Sketchbook.git"
+    "url": "https://github.com/12ants/sk.git"
   },
-  "author": "swift502 <blaha.j502@gmail.com> (http://jblaha.art/)",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/swift502/Sketchbook/issues"
-  },
-  "homepage": "https://github.com/swift502/Sketchbook",
   "devDependencies": {
     "@react-three/test-renderer": "9.1.1",
     "@testing-library/jest-dom": "7.0.1",
