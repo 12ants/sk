@@ -36,33 +36,31 @@ export function CharacterCustomizer({ world }: { world: World | null }) {
   const [material, setMaterial] = useState<THREE.MeshStandardMaterial | null>(null);
   const [bones, setBones] = useState<BoneEntry[]>([]);
 
-  // Clones the shared material so edits here don't leak into other instances of the same model.
+  // Clones the shared material once (marked via userData) so edits here don't leak into other
+  // instances of the same model, and persist across panel close/reopen instead of reverting.
   useEffect(() => {
     if (!character) { setMaterial(null); setBones([]); return; }
-    const source = character.materials[0] as THREE.MeshStandardMaterial | undefined;
-    if (!source) { setMaterial(null); setBones([]); return; }
+    const current = character.materials[0] as THREE.MeshStandardMaterial | undefined;
+    if (!current) { setMaterial(null); setBones([]); return; }
 
-    const cloned = source.clone();
-    const affectedMeshes: THREE.Mesh[] = [];
-    character.modelContainer.traverse((child: any) => {
-      if (child.isMesh && child.material === source) { child.material = cloned; affectedMeshes.push(child); }
-    });
-    const materialIndex = character.materials.indexOf(source);
-    if (materialIndex >= 0) character.materials[materialIndex] = cloned;
+    let target = current;
+    if (!current.userData.gta11Customized) {
+      target = current.clone();
+      target.userData.gta11Customized = true;
+      character.modelContainer.traverse((child: any) => {
+        if (child.isMesh && child.material === current) child.material = target;
+      });
+      const materialIndex = character.materials.indexOf(current);
+      if (materialIndex >= 0) character.materials[materialIndex] = target;
+    }
 
     const foundBones: BoneEntry[] = [];
     character.modelContainer.traverse((child: any) => {
       if (child.isBone) foundBones.push({ name: child.name, bone: child });
     });
 
-    setMaterial(cloned);
+    setMaterial(target);
     setBones(foundBones);
-
-    return () => {
-      affectedMeshes.forEach((mesh) => { mesh.material = source; });
-      if (materialIndex >= 0) character.materials[materialIndex] = source;
-      cloned.dispose();
-    };
   }, [character]);
 
   if (!world || !character || !material) return <p role="status">No active character.</p>;
@@ -73,7 +71,10 @@ export function CharacterCustomizer({ world }: { world: World | null }) {
   };
 
   const setBoneScale = (bone: THREE.Bone, scale: number) => {
-    bone.scale.set(scale, scale, scale);
+    // Animation clips carry scale tracks on most bones, so the override must be reapplied
+    // by Character.update() every frame after the mixer tick, not just set here once.
+    character.boneScaleOverrides.set(bone, scale);
+    bone.scale.setScalar(scale);
     forceRender((n) => n + 1);
   };
 
@@ -82,6 +83,7 @@ export function CharacterCustomizer({ world }: { world: World | null }) {
     new THREE.TextureLoader().load(
       url,
       (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
         material.map = texture;
         material.needsUpdate = true;
         URL.revokeObjectURL(url);
@@ -115,9 +117,8 @@ export function CharacterCustomizer({ world }: { world: World | null }) {
     if (preset.bodyColor) setBodyColor(preset.bodyColor);
     for (const { name, bone } of bones) {
       const scale = preset.boneScales[name];
-      if (scale !== undefined) bone.scale.set(scale, scale, scale);
+      if (scale !== undefined) setBoneScale(bone, scale);
     }
-    forceRender((n) => n + 1);
   };
 
   const deletePreset = (name: string) => {
