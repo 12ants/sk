@@ -4,6 +4,7 @@ import * as CANNON from 'cannon';
 import { World } from '../world/World';
 import _ from 'lodash';
 import { KeyBinding } from '../core/KeyBinding';
+import { applyControlScheme } from '../core/ControlSchemes';
 import { VehicleSeat } from './VehicleSeat';
 import { Wheel } from './Wheel';
 import { VehicleDoor } from './VehicleDoor';
@@ -249,6 +250,7 @@ export abstract class Vehicle extends THREE.Object3D implements IWorldEntity
 
 	public inputReceiverInit(): void
 	{
+		applyControlScheme(this.actions, this.world.params.Control_Scheme);
 		this.collision.allowSleep = false;
 		this.setFirstPersonView(false);
 	}

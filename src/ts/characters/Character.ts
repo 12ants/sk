@@ -4,6 +4,7 @@ import * as _ from 'lodash';
 import * as Utils from '../core/FunctionLibrary';
 
 import { KeyBinding } from '../core/KeyBinding';
+import { applyControlScheme } from '../core/ControlSchemes';
 import { VectorSpringSimulator } from '../physics/spring_simulation/VectorSpringSimulator';
 import { RelativeSpringSimulator } from '../physics/spring_simulation/RelativeSpringSimulator';
 import { Idle } from './character_states/Idle';
@@ -27,6 +28,9 @@ import { GroundImpactData } from './GroundImpactData';
 import { ClosestObjectFinder } from '../core/ClosestObjectFinder';
 import { Object3D } from 'three';
 import { EntityType } from '../enums/EntityType';
+
+export type CharacterCameraMode = 'orbit' | 'close' | 'first-person';
+const CHARACTER_CAMERA_MODES: CharacterCameraMode[] = ['orbit', 'close', 'first-person'];
 
 export class Character extends THREE.Object3D implements IWorldEntity
 {
@@ -60,6 +64,7 @@ export class Character extends THREE.Object3D implements IWorldEntity
 	public viewVector: THREE.Vector3;
 	public actions: { [action: string]: KeyBinding };
 	public characterCapsule: CapsuleCollider;
+	public cameraMode: CharacterCameraMode = 'orbit';
 	
 	// Ray casting
 	public rayResult: CANNON.RaycastResult = new CANNON.RaycastResult();
@@ -294,6 +299,10 @@ export class Character extends THREE.Object3D implements IWorldEntity
 			{
 				this.world.restartScenario();
 			}
+			else if (code === 'KeyV' && pressed === true)
+			{
+				this.cycleCameraMode();
+			}
 			else
 			{
 				for (const action in this.actions) {
@@ -442,11 +451,25 @@ export class Character extends THREE.Object3D implements IWorldEntity
 			return;
 		}
 
-		this.world.cameraOperator.setRadius(1.6, true);
+		applyControlScheme(this.actions, this.world.params.Control_Scheme);
 		this.world.cameraOperator.followMode = false;
+		this.setCameraMode(this.cameraMode);
 		// this.world.dirLight.target = this;
 
 		this.displayControls();
+	}
+
+	public setCameraMode(mode: CharacterCameraMode): void
+	{
+		this.cameraMode = mode;
+		this.modelContainer.visible = mode !== 'first-person';
+		this.world.cameraOperator.setRadius(mode === 'first-person' ? 0 : mode === 'close' ? 0.8 : 1.6, true);
+	}
+
+	public cycleCameraMode(): void
+	{
+		const next = CHARACTER_CAMERA_MODES[(CHARACTER_CAMERA_MODES.indexOf(this.cameraMode) + 1) % CHARACTER_CAMERA_MODES.length];
+		this.setCameraMode(next);
 	}
 
 	public displayControls(): void
@@ -467,6 +490,10 @@ export class Character extends THREE.Object3D implements IWorldEntity
 			{
 				keys: ['F', 'or', 'G'],
 				desc: 'Enter vehicle'
+			},
+			{
+				keys: ['V'],
+				desc: 'Cycle camera mode'
 			},
 			{
 				keys: ['Shift', '+', 'R'],

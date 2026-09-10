@@ -100,6 +100,20 @@ export class InputManager implements IUpdatable
 		if (!enabled && document.pointerLockElement === this.domElement) document.exitPointerLock?.();
 	}
 
+	/** Feeds a synthetic key state directly to the current receiver, bypassing DOM listeners (used by on-screen touch controls). */
+	public simulateKeyboardEvent(code: string, pressed: boolean): void
+	{
+		if (this.disposed || this.uiBlocked) return;
+		this.inputReceiver?.handleKeyboardEvent({ shiftKey: false } as KeyboardEvent, code, pressed);
+	}
+
+	/** Feeds a synthetic look delta directly to the current receiver, bypassing DOM listeners (used by on-screen touch controls). */
+	public simulateMouseMove(deltaX: number, deltaY: number): void
+	{
+		if (this.disposed || this.uiBlocked) return;
+		this.inputReceiver?.handleMouseMove({} as MouseEvent, deltaX, deltaY);
+	}
+
 	public setUiBlocked(blocked: boolean): void
 	{
 		this.uiBlocked = blocked;

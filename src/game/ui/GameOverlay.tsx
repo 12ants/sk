@@ -2,12 +2,19 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { World } from '../../ts/world/World';
 import { gameUiStore } from './gameUiStore';
 import { GameSettings } from './GameSettings';
+import { TouchControls } from './TouchControls';
 import './game-ui.css';
 
 type Panel = 'Controls' | 'Settings' | 'Messages';
 
+const ARROW_KEY_LABELS: Record<string, string> = { W: '↑', A: '←', S: '↓', D: '→' };
+
+const subscribeToNothing = () => () => {};
+const noSettings = () => null;
+
 export function GameOverlay({ world = null }: { world?: World | null }) {
   const state = useSyncExternalStore(gameUiStore.subscribe, gameUiStore.getSnapshot);
+  const settings = useSyncExternalStore(world?.subscribeSettings ?? subscribeToNothing, world?.getSettingsSnapshot ?? noSettings);
   const [panel, setPanel] = useState<Panel | null>(null);
   const playButton = useRef<HTMLButtonElement>(null);
   const blocked = state.loading || !!state.error || !!state.welcome || panel !== null;
@@ -54,6 +61,8 @@ export function GameOverlay({ world = null }: { world?: World | null }) {
           </section>
         </div>
       ) : state.interfaceVisible ? (
+        <>
+        {world && settings?.Mobile_Mode && !blocked ? <TouchControls world={world} /> : null}
         <aside className="game-hud" aria-label="Game interface">
           <div className="game-toolbar game-surface">
             <strong className="game-brand">gta11</strong>
@@ -74,7 +83,10 @@ export function GameOverlay({ world = null }: { world?: World | null }) {
                     <span>Toggle performance overlay</span>
                   </li>
                   {state.controls.map((row, index) => <li key={index}>
-                    <span className="game-keys">{row.keys.map((key, keyIndex) => ['+', 'and', 'or', '&'].includes(key) ? <span key={keyIndex}>{key}</span> : <kbd key={keyIndex}>{key}</kbd>)}</span>
+                    <span className="game-keys">{row.keys.map((key, keyIndex) => {
+                      const label = settings?.Control_Scheme === 'arrows' ? (ARROW_KEY_LABELS[key] ?? key) : key;
+                      return ['+', 'and', 'or', '&'].includes(key) ? <span key={keyIndex}>{key}</span> : <kbd key={keyIndex}>{label}</kbd>;
+                    })}</span>
                     <span>{row.desc}</span>
                   </li>)}
                 </ul>
@@ -85,6 +97,7 @@ export function GameOverlay({ world = null }: { world?: World | null }) {
             </section>
           ) : null}
         </aside>
+        </>
       ) : null}
     </div>
   );

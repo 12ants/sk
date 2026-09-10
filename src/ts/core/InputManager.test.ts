@@ -42,6 +42,28 @@ test('disposes every input listener, including active drag listeners, and unregi
   expect(manager.inputReceiver).toBeUndefined();
 });
 
+test('simulateKeyboardEvent and simulateMouseMove feed the receiver directly, respecting uiBlocked', () => {
+  const world = createTestWorld();
+  const received: string[] = [];
+  world.inputManager.setInputReceiver({
+    actions: {},
+    inputReceiverInit() {}, inputReceiverUpdate() {},
+    handleKeyboardEvent: (_e, code, pressed) => received.push(`key:${code}:${pressed}`),
+    handleMouseButton() {},
+    handleMouseMove: (_e, dx, dy) => received.push(`move:${dx}:${dy}`),
+    handleMouseWheel() {},
+  });
+
+  world.inputManager.simulateKeyboardEvent('KeyW', true);
+  world.inputManager.simulateMouseMove(5, -2);
+  expect(received).toEqual(['key:KeyW:true', 'move:5:-2']);
+
+  world.inputManager.setUiBlocked(true);
+  world.inputManager.simulateKeyboardEvent('KeyW', false);
+  expect(received).toEqual(['key:KeyW:true', 'move:5:-2']);
+  world.dispose();
+});
+
 test('releases pointer lock granted after a menu has blocked game input', () => {
   const world = createTestWorld();
   const exitPointerLock = vi.fn();

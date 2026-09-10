@@ -3,6 +3,7 @@ import * as Utils from './FunctionLibrary';
 import { World } from '../world/World';
 import { IInputReceiver } from '../interfaces/IInputReceiver';
 import { KeyBinding } from './KeyBinding';
+import { applyControlScheme } from './ControlSchemes';
 import { Character } from '../characters/Character';
 import _ from 'lodash';
 import { IUpdatable } from '../interfaces/IUpdatable';
@@ -161,6 +162,7 @@ export class CameraOperator implements IInputReceiver, IUpdatable
 
 	public inputReceiverInit(): void
 	{
+		applyControlScheme(this.actions, this.world.params.Control_Scheme);
 		this.target.copy(this.camera.position);
 		this.setRadius(0, true);
 		// this.world.dirLight.target = this.world.camera;

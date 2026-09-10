@@ -93,6 +93,41 @@ test('gates held movement and camera input while a menu is open and releases the
   world.dispose();
 });
 
+test('relabels displayed control hints live when the control scheme changes', () => {
+  const world = createTestWorld();
+  render(<GameOverlay world={world} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Controls' }));
+  const controls = screen.getByRole('list', { name: 'Game controls' });
+  expect(within(controls).getByText('Run forward').previousElementSibling).toHaveTextContent('Shift+W');
+
+  act(() => world.setControlScheme('arrows'));
+  expect(within(controls).getByText('Run forward').previousElementSibling).toHaveTextContent('Shift+↑');
+  world.dispose();
+});
+
+test('shows touch controls in mobile mode and routes button presses to the active receiver', () => {
+  const world = createTestWorld();
+  world.tick(1 / 60);
+  world.setMobileMode(true);
+  render(<GameOverlay world={world} />);
+
+  expect(screen.getByLabelText('Touch controls')).toBeInTheDocument();
+  fireEvent.pointerDown(screen.getByRole('button', { name: 'Run' }));
+  expect(world.cameraOperator.actions.fast.isPressed).toBe(true);
+  fireEvent.pointerUp(screen.getByRole('button', { name: 'Run' }));
+  expect(world.cameraOperator.actions.fast.isPressed).toBe(false);
+  world.dispose();
+});
+
+test('hides touch controls while a menu is open', () => {
+  const world = createTestWorld();
+  world.setMobileMode(true);
+  render(<GameOverlay world={world} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+  expect(screen.queryByLabelText('Touch controls')).not.toBeInTheDocument();
+  world.dispose();
+});
+
 test('closing a menu with Escape restores canvas focus', () => {
   const world = createTestWorld();
   document.body.appendChild(world.canvas);

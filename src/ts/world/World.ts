@@ -30,6 +30,8 @@ import { Ocean } from './Ocean';
 import { createConcreteMaterial } from './ConcreteMaterial';
 import type { WorldRuntimeDependencies } from '../../game/runtime/types';
 import { gameUiStore, type ControlRow } from '../../game/ui/gameUiStore';
+import { applyControlScheme, type ControlScheme } from '../core/ControlSchemes';
+import { isTouchDevice } from '../core/MobileDetection';
 
 export type WorldOptions = {
 	worldScenePath?: string;
@@ -49,6 +51,8 @@ export type WorldSettings = {
 	Invert_Look: boolean;
 	Field_Of_View: number;
 	Render_Scale: number;
+	Control_Scheme: ControlScheme;
+	Mobile_Mode: boolean;
 };
 
 export type WorldSettingsSnapshot = Readonly<WorldSettings & { scenarioId: string | null }>;
@@ -163,8 +167,9 @@ export class World
 		this.sinceLastFrame = 0;
 		this.justRendered = false;
 
+		const mobileMode = isTouchDevice();
 		this.params = {
-			Pointer_Lock: true,
+			Pointer_Lock: !mobileMode,
 			Mouse_Sensitivity: 0.3,
 			Time_Scale: 1,
 			Shadows: true,
@@ -176,6 +181,8 @@ export class World
 			Invert_Look: false,
 			Field_Of_View: this.camera.fov,
 			Render_Scale: 1,
+			Control_Scheme: 'wasd',
+			Mobile_Mode: mobileMode,
 		};
 		this.publishSettings();
 		gameUiStore.setStatsVisible(false);
@@ -437,6 +444,26 @@ export class World
 	{
 		this.params.Invert_Look = enabled;
 		this.cameraOperator.invertLook = enabled;
+		this.publishSettings();
+	}
+
+	public setControlScheme(scheme: ControlScheme): void
+	{
+		this.params.Control_Scheme = scheme;
+		applyControlScheme(this.cameraOperator.actions, scheme);
+		this.characters.forEach((character) => applyControlScheme(character.actions, scheme));
+		this.vehicles.forEach((vehicle) => applyControlScheme(vehicle.actions, scheme));
+		this.publishSettings();
+	}
+
+	public setMobileMode(enabled: boolean): void
+	{
+		this.params.Mobile_Mode = enabled;
+		if (enabled && this.params.Pointer_Lock)
+		{
+			this.setPointerLock(false);
+			return;
+		}
 		this.publishSettings();
 	}
 

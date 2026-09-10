@@ -52,6 +52,20 @@ test('updates graphics, input and debug behavior through named world setters', (
   world.dispose();
 });
 
+test('switches control scheme and mobile mode through named world setters', () => {
+  const world = createTestWorld();
+  render(<GameSettings world={world} />);
+
+  fireEvent.change(screen.getByLabelText('Control scheme'), { target: { value: 'arrows' } });
+  expect(world.params.Control_Scheme).toBe('arrows');
+  expect(world.cameraOperator.actions.forward.eventCodes).toEqual(['ArrowUp']);
+
+  fireEvent.click(screen.getByLabelText('Mobile mode'));
+  expect(world.params.Mobile_Mode).toBe(true);
+  expect(world.params.Pointer_Lock).toBe(false);
+  world.dispose();
+});
+
 test('preserves time and sun controls and reacts to external settings updates', () => {
   const world = createTestWorld();
   render(<GameSettings world={world} />);

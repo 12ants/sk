@@ -37,6 +37,13 @@ export function GameSettings({ world }: { world: World | null }) {
       </fieldset>
       <fieldset>
         <legend>Input</legend>
+        <Select
+          label="Control scheme"
+          value={settings.Control_Scheme}
+          options={[{ value: 'wasd', label: 'WASD' }, { value: 'arrows', label: 'Arrow keys' }]}
+          onChange={(value) => world.setControlScheme(value as 'wasd' | 'arrows')}
+        />
+        <Toggle label="Mobile mode" checked={settings.Mobile_Mode} onChange={(value) => world.setMobileMode(value)} />
         <Toggle label="Pointer lock" checked={settings.Pointer_Lock} onChange={(value) => world.setPointerLock(value)} />
         <Range label="Mouse sensitivity" value={settings.Mouse_Sensitivity} max={1} step={0.01} onChange={(value) => world.setMouseSensitivity(value)} />
         <Toggle label="Invert look" checked={settings.Invert_Look} onChange={(value) => world.setInvertLook(value)} />
@@ -53,6 +60,17 @@ export function GameSettings({ world }: { world: World | null }) {
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange(value: boolean): void }) {
   return <label className="game-toggle"><span>{label}</span><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} /></label>;
+}
+
+function Select({ label, value, options, onChange }: { label: string; value: string; options: Array<{ value: string; label: string }>; onChange(value: string): void }) {
+  return (
+    <label className="game-field">
+      <span>{label}</span>
+      <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
+  );
 }
 
 function Range({ label, value, min = 0, max, step = 1, onChange }: { label: string; value: number; min?: number; max: number; step?: number; onChange(value: number): void }) {
