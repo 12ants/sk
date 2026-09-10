@@ -2,12 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon';
 
 import { CameraOperator } from '../core/CameraOperator';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { FXAAShader  } from 'three/examples/jsm/shaders/FXAAShader.js';
 
-import { Detector } from '../../lib/utils/Detector';
 import { CannonDebugRenderer } from '../../lib/cannon/CannonDebugRenderer';
 import * as _ from 'lodash';
 
@@ -32,10 +27,23 @@ import type { WorldRuntimeDependencies } from '../../game/runtime/types';
 import { gameUiStore, type ControlRow } from '../../game/ui/gameUiStore';
 import { applyControlScheme, type ControlScheme } from '../core/ControlSchemes';
 import { isTouchDevice } from '../core/MobileDetection';
+import {
+	WORLD_BOUNDS,
+	PHYSICS_FRAME_RATE,
+	SETTLE_SCENE_STEPS,
+	TIME_SCALE_BOTTOM_LIMIT,
+	TIME_SCALE_CHANGE_SPEED,
+	TIME_SCALE_LERP_FACTOR,
+	DEFAULT_MOUSE_SENSITIVITY,
+	DEFAULT_SUN_ELEVATION,
+	DEFAULT_SUN_ROTATION,
+	FPS_SAMPLE_INTERVAL,
+	MAX_LOGIC_TIME_STEP,
+} from './WorldConstants';
 
 export type WorldOptions = {
 	worldScenePath?: string;
-	runtime?: WorldRuntimeDependencies;
+	runtime: WorldRuntimeDependencies;
 };
 
 export type WorldSettings = {
@@ -62,22 +70,13 @@ export class World
 	public renderer: THREE.WebGLRenderer;
 	public camera: THREE.PerspectiveCamera;
 	public canvas: HTMLCanvasElement;
-	public readonly externallyManaged: boolean;
 	public isDisposed: boolean = false;
-	public composer: any;
 	public graphicsWorld: THREE.Scene;
 	public sky: Sky;
 	public physicsWorld: CANNON.World;
-	public parallelPairs: any[];
 	public physicsFrameRate: number;
 	public physicsFrameTime: number;
 	public physicsMaxPrediction: number;
-	public clock: THREE.Clock;
-	public renderDelta: number;
-	public logicDelta: number;
-	public requestDelta: number;
-	public sinceLastFrame: number;
-	public justRendered: boolean;
 	public params: WorldSettings;
 	public inputManager: InputManager;
 	public cameraOperator: CameraOperator;
@@ -91,33 +90,20 @@ export class World
 	public updatables: IUpdatable[] = [];
 
 	private lastScenarioID: string;
-	private animationFrameId?: number;
-	private onWindowResize?: () => void;
-	private ownedDomNodes: Element[] = [];
 	private ownedSceneResources = new Set<{ dispose(): void }>();
 	private settingsSnapshot: WorldSettingsSnapshot;
 	private settingsListeners = new Set<() => void>();
 	private fpsElapsed = 0;
 	private fpsFrames = 0;
 
-	constructor(options?: WorldOptions);
-	/** @deprecated Supply WorldOptions with an R3F runtime in React applications. */
-	constructor(worldScenePath?: string);
-	constructor(options: WorldOptions | string = {})
+	constructor(options: WorldOptions)
 	{
-		const { worldScenePath, runtime } = typeof options === 'string' ? { worldScenePath: options } : options;
-		this.externallyManaged = runtime !== undefined;
-
-		// WebGL not supported
-		if (!this.externallyManaged && !Detector.webgl)
-		{
-			gameUiStore.setError('This browser does not support the WebGL capabilities required by gta11.');
-		}
+		const { worldScenePath, runtime } = options;
 
 		// Renderer
-		this.renderer = runtime?.renderer ?? new THREE.WebGLRenderer();
-		this.camera = runtime?.camera ?? new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1010);
-		this.canvas = runtime?.canvas ?? this.renderer.domElement;
+		this.renderer = runtime.renderer;
+		this.camera = runtime.camera;
+		this.canvas = runtime.canvas;
 		this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
 		this.renderer.toneMappingExposure = 1.0;
 		this.renderer.shadowMap.enabled = true;
@@ -125,29 +111,6 @@ export class World
 
 		// Three.js scene
 		this.graphicsWorld = new THREE.Scene();
-		if (!this.externallyManaged)
-		{
-			this.renderer.setPixelRatio(window.devicePixelRatio);
-			this.renderer.setSize(window.innerWidth, window.innerHeight);
-			document.body.appendChild(this.canvas);
-			this.ownedDomNodes.push(this.canvas);
-			const renderPass = new RenderPass(this.graphicsWorld, this.camera);
-			const fxaaPass = new ShaderPass(FXAAShader);
-			const pixelRatio = this.renderer.getPixelRatio();
-			fxaaPass.uniforms.resolution.value.set(1 / (window.innerWidth * pixelRatio), 1 / (window.innerHeight * pixelRatio));
-			this.composer = new EffectComposer(this.renderer);
-			this.composer.addPass(renderPass);
-			this.composer.addPass(fxaaPass);
-			this.onWindowResize = () => {
-				this.camera.aspect = window.innerWidth / window.innerHeight;
-				this.camera.updateProjectionMatrix();
-				this.renderer.setSize(window.innerWidth, window.innerHeight);
-				fxaaPass.uniforms.resolution.value.set(1 / (window.innerWidth * pixelRatio), 1 / (window.innerHeight * pixelRatio));
-				this.composer.setSize(window.innerWidth, window.innerHeight);
-			};
-			window.addEventListener('resize', this.onWindowResize, false);
-			this.clock = new THREE.Clock();
-		}
 
 		// Physics
 		this.physicsWorld = new CANNON.World();
@@ -156,28 +119,21 @@ export class World
 		this.physicsWorld.solver.iterations = 10;
 		this.physicsWorld.allowSleep = true;
 
-		this.parallelPairs = [];
-		this.physicsFrameRate = 60;
+		this.physicsFrameRate = PHYSICS_FRAME_RATE;
 		this.physicsFrameTime = 1 / this.physicsFrameRate;
 		this.physicsMaxPrediction = this.physicsFrameRate;
-
-		// RenderLoop
-		this.renderDelta = 0;
-		this.logicDelta = 0;
-		this.sinceLastFrame = 0;
-		this.justRendered = false;
 
 		const mobileMode = isTouchDevice();
 		this.params = {
 			Pointer_Lock: !mobileMode,
-			Mouse_Sensitivity: 0.3,
+			Mouse_Sensitivity: DEFAULT_MOUSE_SENSITIVITY,
 			Time_Scale: 1,
 			Shadows: true,
 			FXAA: true,
 			Debug_Physics: false,
 			Debug_FPS: false,
-			Sun_Elevation: 50,
-			Sun_Rotation: 145,
+			Sun_Elevation: DEFAULT_SUN_ELEVATION,
+			Sun_Rotation: DEFAULT_SUN_ROTATION,
 			Invert_Look: false,
 			Field_Of_View: this.camera.fov,
 			Render_Scale: 1,
@@ -221,8 +177,6 @@ export class World
 				UIManager.setUserInterfaceVisible(true);
 				UIManager.setLoadingScreenVisible(false);
 			}
-
-			if (!this.externallyManaged) this.render(this);
 		}
 		catch (error)
 		{
@@ -234,7 +188,7 @@ export class World
 	public tick(unscaledTimeStep: number): void
 	{
 		if (this.isDisposed) return;
-		const timeStep = Math.min(unscaledTimeStep * this.params.Time_Scale, 1 / 30);
+		const timeStep = Math.min(unscaledTimeStep * this.params.Time_Scale, MAX_LOGIC_TIME_STEP);
 		this.update(timeStep, unscaledTimeStep);
 		this.recordFrame(unscaledTimeStep);
 	}
@@ -242,7 +196,7 @@ export class World
 	public settleScene(): void
 	{
 		// Fixed steps let suspension and character ground contact settle before Play.
-		for (let i = 0; i < 120; i++) this.update(this.physicsFrameTime, this.physicsFrameTime);
+		for (let i = 0; i < SETTLE_SCENE_STEPS; i++) this.update(this.physicsFrameTime, this.physicsFrameTime);
 	}
 
 	public dispose(): void
@@ -250,8 +204,6 @@ export class World
 		if (this.isDisposed) return;
 		this.isDisposed = true;
 		this.inputManager?.dispose();
-		if (this.animationFrameId !== undefined) cancelAnimationFrame(this.animationFrameId);
-		if (this.onWindowResize) window.removeEventListener('resize', this.onWindowResize, false);
 		this.cannonDebugRenderer?.dispose();
 		this.cannonDebugRenderer = undefined;
 
@@ -269,14 +221,6 @@ export class World
 		this.paths.length = 0;
 		this.scenarios.length = 0;
 		this.settingsListeners.clear();
-		this.ownedDomNodes.forEach((element) => element.remove());
-		this.ownedDomNodes.length = 0;
-		if (!this.externallyManaged)
-		{
-			this.composer?.passes.forEach((pass) => pass.dispose?.());
-			this.composer?.dispose();
-			this.renderer.dispose();
-		}
 	}
 
 	// Update
@@ -292,7 +236,7 @@ export class World
 		});
 
 		// Lerp time scale
-		this.params.Time_Scale = THREE.MathUtils.lerp(this.params.Time_Scale, this.timeScaleTarget, 0.2);
+		this.params.Time_Scale = THREE.MathUtils.lerp(this.params.Time_Scale, this.timeScaleTarget, TIME_SCALE_LERP_FACTOR);
 
 		// Physics debug
 		if (this.params.Debug_Physics) this.cannonDebugRenderer.update();
@@ -323,10 +267,10 @@ export class World
 
 	public isOutOfBounds(position: CANNON.Vec3): boolean
 	{
-		let inside = position.x > -211.882 && position.x < 211.882 &&
-					position.z > -169.098 && position.z < 153.232 &&
-					position.y > 0.107;
-		let belowSeaLevel = position.y < 14.989;
+		let inside = position.x > WORLD_BOUNDS.minX && position.x < WORLD_BOUNDS.maxX &&
+					position.z > WORLD_BOUNDS.minZ && position.z < WORLD_BOUNDS.maxZ &&
+					position.y > WORLD_BOUNDS.minY;
+		let belowSeaLevel = position.y < WORLD_BOUNDS.seaLevel;
 
 		return !inside && belowSeaLevel;
 	}
@@ -342,48 +286,6 @@ export class World
 		body.interpolatedQuaternion.copy(newQuat);
 		body.velocity.setZero();
 		body.angularVelocity.setZero();
-	}
-
-	/**
-	 * Rendering loop.
-	 * Implements fps limiter and frame-skipping
-	 * Calls world's "update" function before rendering.
-	 * @param {World} world 
-	 */
-	public render(world: World): void
-	{
-		if (this.externallyManaged || this.isDisposed) return;
-		this.requestDelta = this.clock.getDelta();
-
-		this.animationFrameId = requestAnimationFrame(() =>
-		{
-			world.render(world);
-		});
-
-		// Getting timeStep
-		let unscaledTimeStep = (this.requestDelta + this.renderDelta + this.logicDelta) ;
-		let timeStep = unscaledTimeStep * this.params.Time_Scale;
-		timeStep = Math.min(timeStep, 1 / 30);    // min 30 fps
-
-		// Logic
-		world.update(timeStep, unscaledTimeStep);
-
-		// Measuring logic time
-		this.logicDelta = this.clock.getDelta();
-
-		// Frame limiting
-		let interval = 1 / 60;
-		this.sinceLastFrame += this.requestDelta + this.renderDelta + this.logicDelta;
-		this.sinceLastFrame %= interval;
-
-		this.recordFrame(unscaledTimeStep);
-
-		// Actual rendering with a FXAA ON/OFF switch
-		if (this.params.FXAA) this.composer.render();
-		else this.renderer.render(this.graphicsWorld, this.camera);
-
-		// Measuring render time
-		this.renderDelta = this.clock.getDelta();
 	}
 
 	public setTimeScale(value: number): void
@@ -529,7 +431,7 @@ export class World
 		if (!this.params.Debug_FPS || delta <= 0) return;
 		this.fpsElapsed += delta;
 		this.fpsFrames++;
-		if (this.fpsElapsed >= 0.5)
+		if (this.fpsElapsed >= FPS_SAMPLE_INTERVAL)
 		{
 			gameUiStore.setFps(Math.round(this.fpsFrames / this.fpsElapsed));
 			this.fpsElapsed = 0;
@@ -707,18 +609,15 @@ export class World
 	public scrollTheTimeScale(scrollAmount: number): void
 	{
 		// Changing time scale with scroll wheel
-		const timeScaleBottomLimit = 0.003;
-		const timeScaleChangeSpeed = 1.3;
-	
 		if (scrollAmount > 0)
 		{
-			this.timeScaleTarget /= timeScaleChangeSpeed;
-			if (this.timeScaleTarget < timeScaleBottomLimit) this.timeScaleTarget = 0;
+			this.timeScaleTarget /= TIME_SCALE_CHANGE_SPEED;
+			if (this.timeScaleTarget < TIME_SCALE_BOTTOM_LIMIT) this.timeScaleTarget = 0;
 		}
 		else
 		{
-			this.timeScaleTarget *= timeScaleChangeSpeed;
-			if (this.timeScaleTarget < timeScaleBottomLimit) this.timeScaleTarget = timeScaleBottomLimit;
+			this.timeScaleTarget *= TIME_SCALE_CHANGE_SPEED;
+			if (this.timeScaleTarget < TIME_SCALE_BOTTOM_LIMIT) this.timeScaleTarget = TIME_SCALE_BOTTOM_LIMIT;
 			this.timeScaleTarget = Math.min(this.timeScaleTarget, 1);
 		}
 		this.publishSettings();
