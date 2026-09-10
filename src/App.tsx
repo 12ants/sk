@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber';
 import { EffectComposer, FXAA } from '@react-three/postprocessing';
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { ACESFilmicToneMapping } from 'three';
 import { GameRuntime } from './game/runtime/GameRuntime';
 import { GAME_WORLD_URL } from './game/runtime/assetPaths';
@@ -22,6 +22,9 @@ function GameEffects({ world }: { world: World | null }) {
 
 export function App() {
   const [world, setWorld] = useState<World | null>(null);
+  useEffect(() => {
+    document.title = 'gta11';
+  }, []);
   return (
     <main aria-label="gta11 game" className="game-app">
       <Canvas

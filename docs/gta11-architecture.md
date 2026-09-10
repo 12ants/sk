@@ -61,7 +61,7 @@ Cannon.js is imported as the bare specifier `cannon` throughout `src/ts/**` (e.g
 
 ### Assets
 
-GLB models are served from `public/assets/*` (Vite public dir → stable root URLs like `/assets/world.glb`), not bundled/imported as modules. `build/assets` still holds the pre-migration copies until Task 5/6 of the migration plan confirm the new copies are verified equivalent — don't delete `build/` casually.
+GLB models are served from `public/assets/*` (Vite public dir → stable root URLs like `/assets/world.glb`), not bundled/imported as modules. The pre-migration `build/` directory (Webpack bundle, `.d.ts` output, asset copies) was removed once checksums confirmed `public/assets/*` matched.
 
 ### Tests
 
