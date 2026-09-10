@@ -11,7 +11,7 @@ pnpm install
 ## Commands
 
 ```bash
-pnpm dev          # start the Vite dev server
+pnpm dev          # start the Vite dev server and capture output to debug
 pnpm build        # typecheck (tsc -b) then build a production bundle
 pnpm preview      # preview a production build
 pnpm test         # run the vitest suite
