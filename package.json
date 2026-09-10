@@ -33,6 +33,7 @@
     "@vitejs/plugin-react": "6.1.1",
     "gltfjsx": "6.5.3",
     "jsdom": "30.0.1",
+    "three-stdlib": "2.36.1",
     "typescript": "7.0.2",
     "vite": "8.2.2",
     "vitest": "5.0.0"

@@ -72,6 +72,9 @@ importers:
       jsdom:
         specifier: 30.0.1
         version: 30.0.1
+      three-stdlib:
+        specifier: 2.36.1
+        version: 2.36.1(three@0.186.0)
       typescript:
         specifier: 7.0.2
         version: 7.0.2

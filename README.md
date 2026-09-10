@@ -30,10 +30,13 @@ Movement, camera, and vehicle controls are shown in-game on the welcome/controls
 
 Runtime GLB models are served from `public/assets/*` as Vite public-dir files (stable root URLs, e.g. `/assets/small_plane.glb`). The original world and Blender sources have been removed; Git history retains them.
 
-`src/game/models/*.jsx` contains the GLTFJSX components for every remaining asset,
+`src/game/models/*.tsx` contains the typed GLTFJSX components for every remaining asset,
 following [the GLTFJSX workflow](https://sbcode.net/react-three-fiber/gltfjsx/).
 Import a component's `Model` export inside a Canvas, for example
 `import { Model as CarModel } from './game/models/Car'`.
+`src/game/models/index.ts` re-exports each component's `MODEL_PATH` constant; the
+legacy `LoadingManager`/`VehicleSpawnPoint`/`CharacterSpawnPoint` imperative loaders
+consume those instead of hardcoding `/assets/*.glb` strings.
 The supporting GLBs remain necessary for geometry, textures, and animation clips.
 Generation preserves node names, groups, and metadata so the simulation's
 collider, seat, spawn, and animation identifiers remain available.

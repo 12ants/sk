@@ -10,6 +10,7 @@ import { Character } from '../characters/Character';
 import { FollowPath } from '../characters/character_ai/FollowPath';
 import { LoadingManager } from '../core/LoadingManager';
 import { IWorldEntity } from '../interfaces/IWorldEntity';
+import { VEHICLE_MODEL_PATHS, CHARACTER_MODEL_PATH } from '../../game/models';
 
 export class VehicleSpawnPoint implements ISpawnPoint
 {
@@ -26,7 +27,7 @@ export class VehicleSpawnPoint implements ISpawnPoint
 
 	public spawn(loadingManager: LoadingManager, world: World): void
 	{
-		loadingManager.loadGLTF('/assets/' + this.type + '.glb', (model: any) =>
+		loadingManager.loadGLTF(VEHICLE_MODEL_PATHS[this.type as keyof typeof VEHICLE_MODEL_PATHS], (model: any) =>
 		{
 			let vehicle: Vehicle = this.getNewVehicleByType(model, this.type);
 			vehicle.spawnPoint = this.object;
@@ -42,7 +43,7 @@ export class VehicleSpawnPoint implements ISpawnPoint
 
 			if (this.driver !== undefined)
 			{
-				loadingManager.loadGLTF('/assets/boxman.glb', (charModel) =>
+				loadingManager.loadGLTF(CHARACTER_MODEL_PATH, (charModel) =>
 				{
 					let character = new Character(charModel);
 					world.add(character);
