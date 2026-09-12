@@ -26,6 +26,8 @@ Before committing, run `pnpm test && pnpm typecheck && pnpm build`.
 
 Movement, camera, and vehicle controls are shown in-game on the welcome/controls overlay after the world finishes loading, and vary by scenario. Settings include WASD, arrow-key, and IJKL movement layouts plus independent horizontal/vertical look sensitivity and inversion, field of view, free-camera speed, and a camera reset action. Model settings provide solid or wireframe rendering and simple low, balanced, or high texture-quality presets. The global Shadows setting controls both lights and model shadow participation.
 
+The World settings also allow live selection between the legacy Cannon solver and a warm-started sequential-impulse solver based on [svartaksi's physics engine](https://github.com/12ants/svartaksi/tree/main/src/physics). Both options retain Cannon's existing bodies and collision pipeline, so switching does not reset the running scenario.
+
 ## Assets
 
 Runtime GLB models are served from `public/assets/*` as Vite public-dir files (stable root URLs, e.g. `/assets/small_plane.glb`). The original world and Blender sources have been removed; Git history retains them.

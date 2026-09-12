@@ -24,6 +24,12 @@ export function GameSettings({ world }: { world: World | null }) {
       </label>
       <fieldset>
         <legend>World</legend>
+        <Select
+          label="Physics engine"
+          value={settings.Physics_Engine}
+          options={[{ value: 'cannon', label: 'Cannon (default)' }, { value: 'svartaksi', label: 'Svartaksi (warm start)' }]}
+          onChange={(value) => world.setPhysicsEngine(value as 'cannon' | 'svartaksi')}
+        />
         <Range label="Time scale" value={settings.Time_Scale} max={1} step={0.01} onChange={(value) => world.setTimeScale(value)} />
         <Range label="Sun elevation" value={settings.Sun_Elevation} max={180} onChange={(value) => world.setSunElevation(value)} />
         <Range label="Sun rotation" value={settings.Sun_Rotation} max={360} onChange={(value) => world.setSunRotation(value)} />

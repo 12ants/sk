@@ -129,6 +129,22 @@ test('preserves time and sun controls and reacts to external settings updates', 
   world.dispose();
 });
 
+test('switches physics engines without replacing the physics world', () => {
+  const world = createTestWorld();
+  const physicsWorld = world.physicsWorld;
+  const cannonSolver = physicsWorld.solver;
+  render(<GameSettings world={world} />);
+
+  fireEvent.change(screen.getByLabelText('Physics engine'), { target: { value: 'svartaksi' } });
+  expect(world.params.Physics_Engine).toBe('svartaksi');
+  expect(world.physicsWorld).toBe(physicsWorld);
+  expect(world.physicsWorld.solver).not.toBe(cannonSolver);
+
+  fireEvent.change(screen.getByLabelText('Physics engine'), { target: { value: 'cannon' } });
+  expect(world.physicsWorld.solver).toBe(cannonSolver);
+  world.dispose();
+});
+
 test('publishes immutable settings only on changes and lets consumers unsubscribe', () => {
   const world = createTestWorld();
   const first = world.getSettingsSnapshot();

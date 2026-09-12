@@ -27,6 +27,7 @@ import type { WorldRuntimeDependencies } from '../../game/runtime/types';
 import { gameUiStore, type ControlRow } from '../../game/ui/gameUiStore';
 import { applyControlScheme, type ControlScheme } from '../core/ControlSchemes';
 import { isTouchDevice } from '../core/MobileDetection';
+import { SvartaksiSolver } from '../physics/SvartaksiSolver';
 import {
 	WORLD_BOUNDS,
 	PHYSICS_FRAME_RATE,
@@ -66,6 +67,7 @@ export type WorldSettings = {
 	Mobile_Mode: boolean;
 	Model_Style: 'solid' | 'wireframe';
 	Texture_Quality: 'low' | 'balanced' | 'high';
+	Physics_Engine: 'cannon' | 'svartaksi';
 };
 
 export type WorldSettingsSnapshot = Readonly<WorldSettings & { scenarioId: string | null }>;
@@ -100,6 +102,8 @@ export class World
 	private settingsListeners = new Set<() => void>();
 	private fpsElapsed = 0;
 	private fpsFrames = 0;
+	private cannonSolver: CANNON.Solver;
+	private svartaksiSolver = new SvartaksiSolver();
 
 	constructor(options: WorldOptions)
 	{
@@ -122,6 +126,7 @@ export class World
 		this.physicsWorld.gravity.set(0, -9.81, 0);
 		this.physicsWorld.broadphase = new CANNON.SAPBroadphase(this.physicsWorld);
 		this.physicsWorld.solver.iterations = 10;
+		this.cannonSolver = this.physicsWorld.solver;
 		this.physicsWorld.allowSleep = true;
 
 		this.physicsFrameRate = PHYSICS_FRAME_RATE;
@@ -149,6 +154,7 @@ export class World
 			Mobile_Mode: mobileMode,
 			Model_Style: 'solid',
 			Texture_Quality: 'balanced',
+			Physics_Engine: 'cannon',
 		};
 		this.publishSettings();
 		gameUiStore.setStatsVisible(false);
@@ -302,6 +308,15 @@ export class World
 	{
 		this.params.Time_Scale = value;
 		this.timeScaleTarget = value;
+		this.publishSettings();
+	}
+
+	public setPhysicsEngine(engine: 'cannon' | 'svartaksi'): void
+	{
+		if (this.params.Physics_Engine === engine) return;
+		this.params.Physics_Engine = engine;
+		this.physicsWorld.solver = engine === 'svartaksi' ? this.svartaksiSolver : this.cannonSolver;
+		this.physicsWorld.bodies.forEach((body) => body.wakeUp());
 		this.publishSettings();
 	}
 
