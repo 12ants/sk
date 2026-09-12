@@ -95,17 +95,21 @@ test('updates model materials, textures and shadows', () => {
   world.graphicsWorld.add(mesh);
   render(<GameSettings world={world} />);
 
-  fireEvent.click(screen.getByLabelText('Wireframe models'));
-  fireEvent.click(screen.getByLabelText('Model shadows'));
-  fireEvent.change(screen.getByLabelText('Texture filtering'), { target: { value: 'pixelated' } });
-  fireEvent.change(screen.getByLabelText('Texture sharpness'), { target: { value: '12' } });
+  fireEvent.change(screen.getByLabelText('Model style'), { target: { value: 'wireframe' } });
+  fireEvent.click(screen.getByLabelText('Shadows'));
+  fireEvent.change(screen.getByLabelText('Texture quality'), { target: { value: 'low' } });
 
   expect(material.wireframe).toBe(true);
   expect(mesh.castShadow).toBe(false);
   expect(mesh.receiveShadow).toBe(false);
   expect(texture.magFilter).toBe(THREE.NearestFilter);
   expect(texture.minFilter).toBe(THREE.NearestMipmapNearestFilter);
-  expect(texture.anisotropy).toBe(12);
+  expect(texture.anisotropy).toBe(1);
+
+  fireEvent.change(screen.getByLabelText('Texture quality'), { target: { value: 'high' } });
+  expect(texture.magFilter).toBe(THREE.LinearFilter);
+  expect(texture.minFilter).toBe(THREE.LinearMipmapLinearFilter);
+  expect(texture.anisotropy).toBe(16);
   world.dispose();
 });
 

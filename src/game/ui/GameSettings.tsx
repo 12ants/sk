@@ -46,15 +46,18 @@ export function GameSettings({ world }: { world: World | null }) {
       </fieldset>
       <fieldset>
         <legend>Models</legend>
-        <Toggle label="Wireframe models" checked={settings.Model_Wireframe} onChange={(value) => world.setModelWireframe(value)} />
-        <Toggle label="Model shadows" checked={settings.Model_Shadows} onChange={(value) => world.setModelShadows(value)} />
         <Select
-          label="Texture filtering"
-          value={settings.Texture_Filtering}
-          options={[{ value: 'smooth', label: 'Smooth' }, { value: 'pixelated', label: 'Pixelated' }]}
-          onChange={(value) => world.setTextureFiltering(value as 'smooth' | 'pixelated')}
+          label="Model style"
+          value={settings.Model_Style}
+          options={[{ value: 'solid', label: 'Solid' }, { value: 'wireframe', label: 'Wireframe' }]}
+          onChange={(value) => world.setModelStyle(value as 'solid' | 'wireframe')}
         />
-        <Range label="Texture sharpness" value={settings.Texture_Anisotropy} min={1} max={16} onChange={(value) => world.setTextureAnisotropy(value)} />
+        <Select
+          label="Texture quality"
+          value={settings.Texture_Quality}
+          options={[{ value: 'low', label: 'Low (pixelated)' }, { value: 'balanced', label: 'Balanced' }, { value: 'high', label: 'High' }]}
+          onChange={(value) => world.setTextureQuality(value as 'low' | 'balanced' | 'high')}
+        />
       </fieldset>
       <fieldset>
         <legend>Input</legend>

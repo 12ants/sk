@@ -64,10 +64,8 @@ export type WorldSettings = {
 	Render_Scale: number;
 	Control_Scheme: ControlScheme;
 	Mobile_Mode: boolean;
-	Model_Wireframe: boolean;
-	Model_Shadows: boolean;
-	Texture_Filtering: 'smooth' | 'pixelated';
-	Texture_Anisotropy: number;
+	Model_Style: 'solid' | 'wireframe';
+	Texture_Quality: 'low' | 'balanced' | 'high';
 };
 
 export type WorldSettingsSnapshot = Readonly<WorldSettings & { scenarioId: string | null }>;
@@ -149,10 +147,8 @@ export class World
 			Render_Scale: 1,
 			Control_Scheme: 'wasd',
 			Mobile_Mode: mobileMode,
-			Model_Wireframe: false,
-			Model_Shadows: true,
-			Texture_Filtering: 'smooth',
-			Texture_Anisotropy: 4,
+			Model_Style: 'solid',
+			Texture_Quality: 'balanced',
 		};
 		this.publishSettings();
 		gameUiStore.setStatsVisible(false);
@@ -339,6 +335,7 @@ export class World
 	{
 		this.params.Shadows = enabled;
 		this.sky.csm.lights.forEach((light) => { light.castShadow = enabled; });
+		this.applyModelSettings(this.graphicsWorld, { shadows: true });
 		this.publishSettings();
 	}
 
@@ -424,53 +421,50 @@ export class World
 		this.publishSettings();
 	}
 
-	public setModelWireframe(enabled: boolean): void
+	public setModelStyle(style: 'solid' | 'wireframe'): void
 	{
-		this.params.Model_Wireframe = enabled;
-		this.applyModelSettings(this.graphicsWorld);
+		this.params.Model_Style = style;
+		this.applyModelSettings(this.graphicsWorld, { style: true });
 		this.publishSettings();
 	}
 
-	public setModelShadows(enabled: boolean): void
+	public setTextureQuality(quality: 'low' | 'balanced' | 'high'): void
 	{
-		this.params.Model_Shadows = enabled;
-		this.applyModelSettings(this.graphicsWorld);
+		this.params.Texture_Quality = quality;
+		this.applyModelSettings(this.graphicsWorld, { textures: true });
 		this.publishSettings();
 	}
 
-	public setTextureFiltering(filtering: 'smooth' | 'pixelated'): void
+	private applyModelSettings(root: THREE.Object3D, only?: { shadows?: boolean; style?: boolean; textures?: boolean }): void
 	{
-		this.params.Texture_Filtering = filtering;
-		this.applyModelSettings(this.graphicsWorld);
-		this.publishSettings();
-	}
-
-	public setTextureAnisotropy(value: number): void
-	{
-		this.params.Texture_Anisotropy = value;
-		this.applyModelSettings(this.graphicsWorld);
-		this.publishSettings();
-	}
-
-	private applyModelSettings(root: THREE.Object3D): void
-	{
+		const pixelated = this.params.Texture_Quality === 'low';
+		const requestedAnisotropy = this.params.Texture_Quality === 'high' ? 16 : this.params.Texture_Quality === 'balanced' ? 4 : 1;
+		const anisotropy = Math.min(requestedAnisotropy, this.renderer.capabilities?.getMaxAnisotropy?.() ?? requestedAnisotropy);
 		root.traverse((object) => {
 			if (!(object instanceof THREE.Mesh)) return;
-			object.castShadow = this.params.Model_Shadows;
-			object.receiveShadow = this.params.Model_Shadows;
+			if (!only || only.shadows)
+			{
+				object.castShadow = this.params.Shadows;
+				object.receiveShadow = this.params.Shadows;
+			}
+			if (only?.shadows) return;
 			const materials = Array.isArray(object.material) ? object.material : [object.material];
 			for (const material of materials)
 			{
-				if ('wireframe' in material) material.wireframe = this.params.Model_Wireframe;
+				if ((!only || only.style) && 'wireframe' in material)
+				{
+					material.wireframe = this.params.Model_Style === 'wireframe';
+					material.needsUpdate = true;
+				}
+				if (only?.style) continue;
 				for (const value of Object.values(material))
 				{
 					if (!(value instanceof THREE.Texture)) continue;
-					value.magFilter = this.params.Texture_Filtering === 'pixelated' ? THREE.NearestFilter : THREE.LinearFilter;
-					value.minFilter = this.params.Texture_Filtering === 'pixelated' ? THREE.NearestMipmapNearestFilter : THREE.LinearMipmapLinearFilter;
-					value.anisotropy = this.params.Texture_Anisotropy;
+					value.magFilter = pixelated ? THREE.NearestFilter : THREE.LinearFilter;
+					value.minFilter = pixelated ? THREE.NearestMipmapNearestFilter : THREE.LinearMipmapLinearFilter;
+					value.anisotropy = anisotropy;
 					value.needsUpdate = true;
 				}
-				material.needsUpdate = true;
 			}
 		});
 	}
@@ -533,8 +527,11 @@ export class World
 	public add(worldEntity: IWorldEntity): void
 	{
 		if (this.isDisposed) return;
+		const existingRoots = new Set(this.graphicsWorld.children);
 		worldEntity.addToWorld(this);
-		this.applyModelSettings(this.graphicsWorld);
+		this.graphicsWorld.children.forEach((root) => {
+			if (!existingRoots.has(root)) this.applyModelSettings(root);
+		});
 		this.registerUpdatable(worldEntity);
 	}
 
