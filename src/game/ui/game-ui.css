@@ -53,6 +53,7 @@
 .game-settings legend, .game-customizer legend, .game-vehicle-loader legend { color: var(--game-accent); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; padding: 0 10px 0 0; }
 .game-customizer input[type='file'], .game-vehicle-loader input[type='file'] { width: 100%; color: var(--game-ink); }
 .game-customizer input[type='color'] { width: 100%; height: 34px; padding: 2px; background: #202729; border: 1px solid var(--game-line); border-radius: 4px; }
+.game-customizer select { width: 100%; padding: 10px 12px; color: var(--game-ink); background: #202729; border: 1px solid var(--game-line); border-radius: 4px; }
 .game-customizer input[type='text'], .game-vehicle-loader input[type='text'] { width: 100%; padding: 10px 12px; color: var(--game-ink); background: #202729; border: 1px solid var(--game-line); border-radius: 4px; }
 .game-customizer button, .game-vehicle-loader button { margin-top: 9px; }
 .game-preset-list { list-style: none; padding: 0; margin: 9px 0 0; }

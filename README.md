@@ -28,6 +28,8 @@ Movement, camera, and vehicle controls are shown in-game on the welcome/controls
 
 The World settings also allow live selection between the legacy Cannon solver and a warm-started sequential-impulse solver based on [svartaksi's physics engine](https://github.com/12ants/svartaksi/tree/main/src/physics). Both options retain Cannon's existing bodies and collision pipeline, so switching does not reset the running scenario.
 
+The character customizer can switch the active player between Boxman and a procedural skeleton view. The skeleton uses Boxman's live bone hierarchy and animation mixer, so every movement and vehicle animation remains available without loading a duplicate rig.
+
 ## Assets
 
 Runtime GLB models are served from `public/assets/*` as Vite public-dir files (stable root URLs, e.g. `/assets/small_plane.glb`). The original world and Blender sources have been removed; Git history retains them.

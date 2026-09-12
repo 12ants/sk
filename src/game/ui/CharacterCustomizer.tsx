@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 import type { World } from '../../ts/world/World';
+import type { CharacterVisualStyle } from '../../ts/characters/Character';
 
 type CharacterPreset = {
   name: string;
@@ -35,6 +36,7 @@ export function CharacterCustomizer({ world }: { world: World | null }) {
   const [presetName, setPresetName] = useState('');
   const [material, setMaterial] = useState<THREE.MeshStandardMaterial | null>(null);
   const [bones, setBones] = useState<BoneEntry[]>([]);
+  const [visualStyle, setVisualStyle] = useState<CharacterVisualStyle>('boxman');
 
   // Clones the shared material once (marked via userData) so edits here don't leak into other
   // instances of the same model, and persist across panel close/reopen instead of reverting.
@@ -61,6 +63,7 @@ export function CharacterCustomizer({ world }: { world: World | null }) {
 
     setMaterial(target);
     setBones(foundBones);
+    setVisualStyle(character.visualStyle);
   }, [character]);
 
   if (!world || !character || !material) return <p role="status">No active character.</p>;
@@ -68,6 +71,11 @@ export function CharacterCustomizer({ world }: { world: World | null }) {
   const setBodyColor = (hex: string) => {
     material.color.set(hex);
     forceRender((n) => n + 1);
+  };
+
+  const chooseVisualStyle = (style: CharacterVisualStyle) => {
+    character.setVisualStyle(style);
+    setVisualStyle(style);
   };
 
   const setBoneScale = (bone: THREE.Bone, scale: number) => {
@@ -133,13 +141,27 @@ export function CharacterCustomizer({ world }: { world: World | null }) {
       <fieldset>
         <legend>Appearance</legend>
         <label className="game-field">
-          <span>Body color</span>
-          <input type="color" value={`#${material.color.getHexString()}`} onChange={(event) => setBodyColor(event.target.value)} />
+          <span>Player model</span>
+          <select value={visualStyle} onChange={(event) => chooseVisualStyle(event.target.value as CharacterVisualStyle)}>
+            <option value="boxman">Boxman</option>
+            <option value="skeleton">Skeleton</option>
+          </select>
         </label>
-        <label className="game-field">
-          <span>Texture</span>
-          <input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) onTextureUpload(file); }} />
-        </label>
+        {visualStyle === 'skeleton' ? (
+          <label className="game-field">
+            <span>Skeleton color</span>
+            <input type="color" value={`#${character.getSkeletonColor().getHexString()}`} onChange={(event) => { character.setSkeletonColor(event.target.value); forceRender((n) => n + 1); }} />
+          </label>
+        ) : (<>
+          <label className="game-field">
+            <span>Body color</span>
+            <input type="color" value={`#${material.color.getHexString()}`} onChange={(event) => setBodyColor(event.target.value)} />
+          </label>
+          <label className="game-field">
+            <span>Texture</span>
+            <input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) onTextureUpload(file); }} />
+          </label>
+        </>)}
       </fieldset>
       {bones.length > 0 ? (
         <fieldset>
