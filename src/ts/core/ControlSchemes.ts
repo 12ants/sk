@@ -1,25 +1,20 @@
 import { KeyBinding } from './KeyBinding';
 
-export type ControlScheme = 'wasd' | 'arrows';
+export type ControlScheme = 'wasd' | 'arrows' | 'ijkl';
 
-const WASD_TO_ARROWS: Record<string, string> = {
-	KeyW: 'ArrowUp',
-	KeyA: 'ArrowLeft',
-	KeyS: 'ArrowDown',
-	KeyD: 'ArrowRight',
-};
-
-const ARROWS_TO_WASD: Record<string, string> = {
-	ArrowUp: 'KeyW',
-	ArrowLeft: 'KeyA',
-	ArrowDown: 'KeyS',
-	ArrowRight: 'KeyD',
+const DIRECTION_CODES: Record<ControlScheme, string[]> = {
+	wasd: ['KeyW', 'KeyA', 'KeyS', 'KeyD'],
+	arrows: ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'],
+	ijkl: ['KeyI', 'KeyJ', 'KeyK', 'KeyL'],
 };
 
 /** Remaps any WASD/arrow-key codes bound on the given actions to match the chosen scheme, leaving every other binding untouched. */
 export function applyControlScheme(actions: { [action: string]: KeyBinding }, scheme: ControlScheme): void
 {
-	const map = scheme === 'arrows' ? WASD_TO_ARROWS : ARROWS_TO_WASD;
+	const targetCodes = DIRECTION_CODES[scheme];
+	const map = Object.fromEntries(
+		Object.values(DIRECTION_CODES).flatMap((codes) => codes.map((code, index) => [code, targetCodes[index]])),
+	);
 	for (const action in actions)
 	{
 		if (!actions.hasOwnProperty(action)) continue;

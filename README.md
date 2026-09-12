@@ -24,7 +24,11 @@ Before committing, run `pnpm test && pnpm typecheck && pnpm build`.
 
 ## Controls
 
-Movement, camera, and vehicle controls are shown in-game on the welcome/controls overlay after the world finishes loading, and vary by scenario.
+Movement, camera, and vehicle controls are shown in-game on the welcome/controls overlay after the world finishes loading, and vary by scenario. Settings include WASD, arrow-key, and IJKL movement layouts plus independent horizontal/vertical look sensitivity and inversion, field of view, free-camera speed, and a camera reset action. Model settings provide solid or wireframe rendering and simple low, balanced, or high texture-quality presets. The global Shadows setting controls both lights and model shadow participation.
+
+The World settings also allow live selection between the legacy Cannon solver and a warm-started sequential-impulse solver based on [svartaksi's physics engine](https://github.com/12ants/svartaksi/tree/main/src/physics). Both options retain Cannon's existing bodies and collision pipeline, so switching does not reset the running scenario.
+
+The character customizer can switch the active player between Boxman and a procedural skeleton view. The skeleton uses Boxman's live bone hierarchy and animation mixer, so every movement and vehicle animation remains available without loading a duplicate rig.
 
 ## Assets
 

@@ -33,6 +33,7 @@ export class CameraOperator implements IInputReceiver, IUpdatable
 
 	public followMode: boolean = false;
 	public invertLook: boolean = false;
+	public invertLookX: boolean = false;
 
 	public characterCaller: Character;
 
@@ -81,7 +82,7 @@ export class CameraOperator implements IInputReceiver, IUpdatable
 
 	public move(deltaX: number, deltaY: number): void
 	{
-		this.theta -= deltaX * (this.sensitivity.x / 2);
+		this.theta -= deltaX * (this.sensitivity.x / 2) * (this.invertLookX ? -1 : 1);
 		this.theta %= 360;
 		this.phi += deltaY * (this.sensitivity.y / 2) * (this.invertLook ? -1 : 1);
 		this.phi = Math.min(85, Math.max(-85, this.phi));
@@ -139,6 +140,12 @@ export class CameraOperator implements IInputReceiver, IUpdatable
 	public handleMouseWheel(event: WheelEvent, value: number): void
 	{
 		this.world.scrollTheTimeScale(value);
+	}
+
+	public resetView(): void
+	{
+		this.theta = 0;
+		this.phi = 15;
 	}
 
 	public handleMouseButton(event: MouseEvent, code: string, pressed: boolean): void

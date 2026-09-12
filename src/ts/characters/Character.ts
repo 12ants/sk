@@ -30,6 +30,7 @@ import { Object3D } from 'three';
 import { EntityType } from '../enums/EntityType';
 
 export type CharacterCameraMode = 'orbit' | 'close' | 'first-person';
+export type CharacterVisualStyle = 'boxman' | 'skeleton';
 const CHARACTER_CAMERA_MODES: CharacterCameraMode[] = ['orbit', 'close', 'first-person'];
 
 export class Character extends THREE.Object3D implements IWorldEntity
@@ -65,6 +66,7 @@ export class Character extends THREE.Object3D implements IWorldEntity
 	public actions: { [action: string]: KeyBinding };
 	public characterCapsule: CapsuleCollider;
 	public cameraMode: CharacterCameraMode = 'orbit';
+	public visualStyle: CharacterVisualStyle = 'boxman';
 	
 	// Ray casting
 	public rayResult: CANNON.RaycastResult = new CANNON.RaycastResult();
@@ -90,6 +92,8 @@ export class Character extends THREE.Object3D implements IWorldEntity
 	public boneScaleOverrides: Map<THREE.Bone, number> = new Map();
 	
 	private physicsEnabled: boolean = true;
+	private modelScene: THREE.Object3D;
+	private skeletonHelper: THREE.SkeletonHelper;
 
 	constructor(gltf: any)
 	{
@@ -106,7 +110,8 @@ export class Character extends THREE.Object3D implements IWorldEntity
 		this.modelContainer = new THREE.Group();
 		this.modelContainer.position.y = -0.57;
 		this.tiltContainer.add(this.modelContainer);
-		this.modelContainer.add(gltf.scene);
+		this.modelScene = gltf.scene;
+		this.modelContainer.add(this.modelScene);
 
 		this.mixer = new THREE.AnimationMixer(gltf.scene);
 
@@ -469,6 +474,38 @@ export class Character extends THREE.Object3D implements IWorldEntity
 		this.cameraMode = mode;
 		this.modelContainer.visible = mode !== 'first-person';
 		this.world.cameraOperator.setRadius(mode === 'first-person' ? 0 : mode === 'close' ? 0.8 : 1.6, true);
+	}
+
+	/** Switches visuals without replacing the animated rig, mixer, or physics body. */
+	public setVisualStyle(style: CharacterVisualStyle): void
+	{
+		this.visualStyle = style;
+		this.modelScene.traverse((child) => {
+			if ((child as THREE.Mesh).isMesh) child.visible = style === 'boxman';
+		});
+
+		if (!this.skeletonHelper)
+		{
+			this.skeletonHelper = new THREE.SkeletonHelper(this.modelScene);
+			this.skeletonHelper.name = 'Skeleton player';
+			this.skeletonHelper.visible = false;
+			this.skeletonHelper.matrixAutoUpdate = true;
+			(this.skeletonHelper.material as THREE.LineBasicMaterial).color.set(0xd8f5e1);
+			this.modelContainer.add(this.skeletonHelper);
+		}
+		this.skeletonHelper.visible = style === 'skeleton';
+	}
+
+	public setSkeletonColor(color: THREE.ColorRepresentation): void
+	{
+		if (!this.skeletonHelper) this.setVisualStyle(this.visualStyle);
+		(this.skeletonHelper.material as THREE.LineBasicMaterial).color.set(color);
+	}
+
+	public getSkeletonColor(): THREE.Color
+	{
+		if (!this.skeletonHelper) this.setVisualStyle(this.visualStyle);
+		return (this.skeletonHelper.material as THREE.LineBasicMaterial).color;
 	}
 
 	public cycleCameraMode(): void

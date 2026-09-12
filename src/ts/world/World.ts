@@ -27,6 +27,7 @@ import type { WorldRuntimeDependencies } from '../../game/runtime/types';
 import { gameUiStore, type ControlRow } from '../../game/ui/gameUiStore';
 import { applyControlScheme, type ControlScheme } from '../core/ControlSchemes';
 import { isTouchDevice } from '../core/MobileDetection';
+import { SvartaksiSolver } from '../physics/SvartaksiSolver';
 import {
 	WORLD_BOUNDS,
 	PHYSICS_FRAME_RATE,
@@ -49,6 +50,8 @@ export type WorldOptions = {
 export type WorldSettings = {
 	Pointer_Lock: boolean;
 	Mouse_Sensitivity: number;
+	Mouse_Sensitivity_Y: number;
+	Camera_Move_Speed: number;
 	Time_Scale: number;
 	Shadows: boolean;
 	FXAA: boolean;
@@ -57,10 +60,14 @@ export type WorldSettings = {
 	Sun_Elevation: number;
 	Sun_Rotation: number;
 	Invert_Look: boolean;
+	Invert_Look_X: boolean;
 	Field_Of_View: number;
 	Render_Scale: number;
 	Control_Scheme: ControlScheme;
 	Mobile_Mode: boolean;
+	Model_Style: 'solid' | 'wireframe';
+	Texture_Quality: 'low' | 'balanced' | 'high';
+	Physics_Engine: 'cannon' | 'svartaksi';
 };
 
 export type WorldSettingsSnapshot = Readonly<WorldSettings & { scenarioId: string | null }>;
@@ -95,6 +102,8 @@ export class World
 	private settingsListeners = new Set<() => void>();
 	private fpsElapsed = 0;
 	private fpsFrames = 0;
+	private cannonSolver: CANNON.Solver;
+	private svartaksiSolver = new SvartaksiSolver();
 
 	constructor(options: WorldOptions)
 	{
@@ -117,6 +126,7 @@ export class World
 		this.physicsWorld.gravity.set(0, -9.81, 0);
 		this.physicsWorld.broadphase = new CANNON.SAPBroadphase(this.physicsWorld);
 		this.physicsWorld.solver.iterations = 10;
+		this.cannonSolver = this.physicsWorld.solver;
 		this.physicsWorld.allowSleep = true;
 
 		this.physicsFrameRate = PHYSICS_FRAME_RATE;
@@ -127,6 +137,8 @@ export class World
 		this.params = {
 			Pointer_Lock: !mobileMode,
 			Mouse_Sensitivity: DEFAULT_MOUSE_SENSITIVITY,
+			Mouse_Sensitivity_Y: DEFAULT_MOUSE_SENSITIVITY * 0.8,
+			Camera_Move_Speed: 0.06,
 			Time_Scale: 1,
 			Shadows: true,
 			FXAA: true,
@@ -135,10 +147,14 @@ export class World
 			Sun_Elevation: DEFAULT_SUN_ELEVATION,
 			Sun_Rotation: DEFAULT_SUN_ROTATION,
 			Invert_Look: false,
+			Invert_Look_X: false,
 			Field_Of_View: this.camera.fov,
 			Render_Scale: 1,
 			Control_Scheme: 'wasd',
 			Mobile_Mode: mobileMode,
+			Model_Style: 'solid',
+			Texture_Quality: 'balanced',
+			Physics_Engine: 'cannon',
 		};
 		this.publishSettings();
 		gameUiStore.setStatsVisible(false);
@@ -295,6 +311,15 @@ export class World
 		this.publishSettings();
 	}
 
+	public setPhysicsEngine(engine: 'cannon' | 'svartaksi'): void
+	{
+		if (this.params.Physics_Engine === engine) return;
+		this.params.Physics_Engine = engine;
+		this.physicsWorld.solver = engine === 'svartaksi' ? this.svartaksiSolver : this.cannonSolver;
+		this.physicsWorld.bodies.forEach((body) => body.wakeUp());
+		this.publishSettings();
+	}
+
 	public getSettingsSnapshot = (): WorldSettingsSnapshot => this.settingsSnapshot;
 
 	public subscribeSettings = (listener: () => void): (() => void) => {
@@ -325,6 +350,7 @@ export class World
 	{
 		this.params.Shadows = enabled;
 		this.sky.csm.lights.forEach((light) => { light.castShadow = enabled; });
+		this.applyModelSettings(this.graphicsWorld, { shadows: true });
 		this.publishSettings();
 	}
 
@@ -338,7 +364,14 @@ export class World
 	public setMouseSensitivity(value: number): void
 	{
 		this.params.Mouse_Sensitivity = value;
-		this.cameraOperator.setSensitivity(value, value * 0.8);
+		this.cameraOperator.setSensitivity(value, this.params.Mouse_Sensitivity_Y);
+		this.publishSettings();
+	}
+
+	public setMouseSensitivityY(value: number): void
+	{
+		this.params.Mouse_Sensitivity_Y = value;
+		this.cameraOperator.setSensitivity(this.params.Mouse_Sensitivity, value);
 		this.publishSettings();
 	}
 
@@ -347,6 +380,25 @@ export class World
 		this.params.Invert_Look = enabled;
 		this.cameraOperator.invertLook = enabled;
 		this.publishSettings();
+	}
+
+	public setInvertLookX(enabled: boolean): void
+	{
+		this.params.Invert_Look_X = enabled;
+		this.cameraOperator.invertLookX = enabled;
+		this.publishSettings();
+	}
+
+	public setCameraMoveSpeed(value: number): void
+	{
+		this.params.Camera_Move_Speed = value;
+		this.cameraOperator.movementSpeed = value;
+		this.publishSettings();
+	}
+
+	public resetCameraView(): void
+	{
+		this.cameraOperator.resetView();
 	}
 
 	public setControlScheme(scheme: ControlScheme): void
@@ -382,6 +434,54 @@ export class World
 		this.params.Render_Scale = value;
 		this.renderer.setPixelRatio(value);
 		this.publishSettings();
+	}
+
+	public setModelStyle(style: 'solid' | 'wireframe'): void
+	{
+		this.params.Model_Style = style;
+		this.applyModelSettings(this.graphicsWorld, { style: true });
+		this.publishSettings();
+	}
+
+	public setTextureQuality(quality: 'low' | 'balanced' | 'high'): void
+	{
+		this.params.Texture_Quality = quality;
+		this.applyModelSettings(this.graphicsWorld, { textures: true });
+		this.publishSettings();
+	}
+
+	private applyModelSettings(root: THREE.Object3D, only?: { shadows?: boolean; style?: boolean; textures?: boolean }): void
+	{
+		const pixelated = this.params.Texture_Quality === 'low';
+		const requestedAnisotropy = this.params.Texture_Quality === 'high' ? 16 : this.params.Texture_Quality === 'balanced' ? 4 : 1;
+		const anisotropy = Math.min(requestedAnisotropy, this.renderer.capabilities?.getMaxAnisotropy?.() ?? requestedAnisotropy);
+		root.traverse((object) => {
+			if (!(object instanceof THREE.Mesh)) return;
+			if (!only || only.shadows)
+			{
+				object.castShadow = this.params.Shadows;
+				object.receiveShadow = this.params.Shadows;
+			}
+			if (only?.shadows) return;
+			const materials = Array.isArray(object.material) ? object.material : [object.material];
+			for (const material of materials)
+			{
+				if ((!only || only.style) && 'wireframe' in material)
+				{
+					material.wireframe = this.params.Model_Style === 'wireframe';
+					material.needsUpdate = true;
+				}
+				if (only?.style) continue;
+				for (const value of Object.values(material))
+				{
+					if (!(value instanceof THREE.Texture)) continue;
+					value.magFilter = pixelated ? THREE.NearestFilter : THREE.LinearFilter;
+					value.minFilter = pixelated ? THREE.NearestMipmapNearestFilter : THREE.LinearMipmapLinearFilter;
+					value.anisotropy = anisotropy;
+					value.needsUpdate = true;
+				}
+			}
+		});
 	}
 
 	public togglePerfOverlay(): void
@@ -442,7 +542,11 @@ export class World
 	public add(worldEntity: IWorldEntity): void
 	{
 		if (this.isDisposed) return;
+		const existingRoots = new Set(this.graphicsWorld.children);
 		worldEntity.addToWorld(this);
+		this.graphicsWorld.children.forEach((root) => {
+			if (!existingRoots.has(root)) this.applyModelSettings(root);
+		});
 		this.registerUpdatable(worldEntity);
 	}
 
@@ -551,6 +655,7 @@ export class World
 		});
 
 		this.graphicsWorld.add(gltf.scene);
+		this.applyModelSettings(gltf.scene);
 
 		// Launch default scenario
 		let defaultScenarioID: string;
