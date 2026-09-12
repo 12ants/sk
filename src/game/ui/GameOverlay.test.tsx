@@ -102,6 +102,9 @@ test('relabels displayed control hints live when the control scheme changes', ()
 
   act(() => world.setControlScheme('arrows'));
   expect(within(controls).getByText('Run forward').previousElementSibling).toHaveTextContent('Shift+↑');
+
+  act(() => world.setControlScheme('ijkl'));
+  expect(within(controls).getByText('Run forward').previousElementSibling).toHaveTextContent('Shift+I');
   world.dispose();
 });
 

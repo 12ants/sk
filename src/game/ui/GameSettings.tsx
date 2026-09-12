@@ -32,21 +32,28 @@ export function GameSettings({ world }: { world: World | null }) {
         <legend>Graphics</legend>
         <Toggle label="FXAA" checked={settings.FXAA} onChange={(value) => world.setFxaa(value)} />
         <Toggle label="Shadows" checked={settings.Shadows} onChange={(value) => world.setShadows(value)} />
-        <Range label="Field of view" value={settings.Field_Of_View} min={40} max={120} onChange={(value) => world.setFov(value)} />
         <Range label="Render scale" value={settings.Render_Scale} min={0.5} max={2} step={0.1} onChange={(value) => world.setRenderScale(value)} />
+      </fieldset>
+      <fieldset>
+        <legend>Camera</legend>
+        <Range label="Field of view" value={settings.Field_Of_View} min={40} max={120} onChange={(value) => world.setFov(value)} />
+        <Range label="Horizontal sensitivity" value={settings.Mouse_Sensitivity} max={1} step={0.01} onChange={(value) => world.setMouseSensitivity(value)} />
+        <Range label="Vertical sensitivity" value={settings.Mouse_Sensitivity_Y} max={1} step={0.01} onChange={(value) => world.setMouseSensitivityY(value)} />
+        <Range label="Free camera speed" value={settings.Camera_Move_Speed} min={0.01} max={0.2} step={0.01} onChange={(value) => world.setCameraMoveSpeed(value)} />
+        <Toggle label="Invert horizontal look" checked={settings.Invert_Look_X} onChange={(value) => world.setInvertLookX(value)} />
+        <Toggle label="Invert vertical look" checked={settings.Invert_Look} onChange={(value) => world.setInvertLook(value)} />
+        <button type="button" className="game-button" onClick={() => world.resetCameraView()}>Reset camera view</button>
       </fieldset>
       <fieldset>
         <legend>Input</legend>
         <Select
           label="Control scheme"
           value={settings.Control_Scheme}
-          options={[{ value: 'wasd', label: 'WASD' }, { value: 'arrows', label: 'Arrow keys' }]}
-          onChange={(value) => world.setControlScheme(value as 'wasd' | 'arrows')}
+          options={[{ value: 'wasd', label: 'WASD' }, { value: 'arrows', label: 'Arrow keys' }, { value: 'ijkl', label: 'IJKL' }]}
+          onChange={(value) => world.setControlScheme(value as 'wasd' | 'arrows' | 'ijkl')}
         />
         <Toggle label="Mobile mode" checked={settings.Mobile_Mode} onChange={(value) => world.setMobileMode(value)} />
         <Toggle label="Pointer lock" checked={settings.Pointer_Lock} onChange={(value) => world.setPointerLock(value)} />
-        <Range label="Mouse sensitivity" value={settings.Mouse_Sensitivity} max={1} step={0.01} onChange={(value) => world.setMouseSensitivity(value)} />
-        <Toggle label="Invert look" checked={settings.Invert_Look} onChange={(value) => world.setInvertLook(value)} />
       </fieldset>
       <fieldset>
         <legend>Debug</legend>

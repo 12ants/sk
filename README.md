@@ -24,7 +24,7 @@ Before committing, run `pnpm test && pnpm typecheck && pnpm build`.
 
 ## Controls
 
-Movement, camera, and vehicle controls are shown in-game on the welcome/controls overlay after the world finishes loading, and vary by scenario.
+Movement, camera, and vehicle controls are shown in-game on the welcome/controls overlay after the world finishes loading, and vary by scenario. Settings include WASD, arrow-key, and IJKL movement layouts plus independent horizontal/vertical look sensitivity and inversion, field of view, free-camera speed, and a camera reset action.
 
 ## Assets
 

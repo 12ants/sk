@@ -10,6 +10,7 @@ import './game-ui.css';
 type Panel = 'Controls' | 'Settings' | 'Messages' | 'Customizer' | 'Vehicles';
 
 const ARROW_KEY_LABELS: Record<string, string> = { W: '↑', A: '←', S: '↓', D: '→' };
+const IJKL_KEY_LABELS: Record<string, string> = { W: 'I', A: 'J', S: 'K', D: 'L' };
 
 const subscribeToNothing = () => () => {};
 const noSettings = () => null;
@@ -86,7 +87,8 @@ export function GameOverlay({ world = null }: { world?: World | null }) {
                   </li>
                   {state.controls.map((row, index) => <li key={index}>
                     <span className="game-keys">{row.keys.map((key, keyIndex) => {
-                      const label = settings?.Control_Scheme === 'arrows' ? (ARROW_KEY_LABELS[key] ?? key) : key;
+                      const labels = settings?.Control_Scheme === 'arrows' ? ARROW_KEY_LABELS : settings?.Control_Scheme === 'ijkl' ? IJKL_KEY_LABELS : {};
+                      const label = labels[key] ?? key;
                       return ['+', 'and', 'or', '&'].includes(key) ? <span key={keyIndex}>{key}</span> : <kbd key={keyIndex}>{label}</kbd>;
                     })}</span>
                     <span>{row.desc}</span>

@@ -49,6 +49,8 @@ export type WorldOptions = {
 export type WorldSettings = {
 	Pointer_Lock: boolean;
 	Mouse_Sensitivity: number;
+	Mouse_Sensitivity_Y: number;
+	Camera_Move_Speed: number;
 	Time_Scale: number;
 	Shadows: boolean;
 	FXAA: boolean;
@@ -57,6 +59,7 @@ export type WorldSettings = {
 	Sun_Elevation: number;
 	Sun_Rotation: number;
 	Invert_Look: boolean;
+	Invert_Look_X: boolean;
 	Field_Of_View: number;
 	Render_Scale: number;
 	Control_Scheme: ControlScheme;
@@ -127,6 +130,8 @@ export class World
 		this.params = {
 			Pointer_Lock: !mobileMode,
 			Mouse_Sensitivity: DEFAULT_MOUSE_SENSITIVITY,
+			Mouse_Sensitivity_Y: DEFAULT_MOUSE_SENSITIVITY * 0.8,
+			Camera_Move_Speed: 0.06,
 			Time_Scale: 1,
 			Shadows: true,
 			FXAA: true,
@@ -135,6 +140,7 @@ export class World
 			Sun_Elevation: DEFAULT_SUN_ELEVATION,
 			Sun_Rotation: DEFAULT_SUN_ROTATION,
 			Invert_Look: false,
+			Invert_Look_X: false,
 			Field_Of_View: this.camera.fov,
 			Render_Scale: 1,
 			Control_Scheme: 'wasd',
@@ -338,7 +344,14 @@ export class World
 	public setMouseSensitivity(value: number): void
 	{
 		this.params.Mouse_Sensitivity = value;
-		this.cameraOperator.setSensitivity(value, value * 0.8);
+		this.cameraOperator.setSensitivity(value, this.params.Mouse_Sensitivity_Y);
+		this.publishSettings();
+	}
+
+	public setMouseSensitivityY(value: number): void
+	{
+		this.params.Mouse_Sensitivity_Y = value;
+		this.cameraOperator.setSensitivity(this.params.Mouse_Sensitivity, value);
 		this.publishSettings();
 	}
 
@@ -347,6 +360,25 @@ export class World
 		this.params.Invert_Look = enabled;
 		this.cameraOperator.invertLook = enabled;
 		this.publishSettings();
+	}
+
+	public setInvertLookX(enabled: boolean): void
+	{
+		this.params.Invert_Look_X = enabled;
+		this.cameraOperator.invertLookX = enabled;
+		this.publishSettings();
+	}
+
+	public setCameraMoveSpeed(value: number): void
+	{
+		this.params.Camera_Move_Speed = value;
+		this.cameraOperator.movementSpeed = value;
+		this.publishSettings();
+	}
+
+	public resetCameraView(): void
+	{
+		this.cameraOperator.resetView();
 	}
 
 	public setControlScheme(scheme: ControlScheme): void

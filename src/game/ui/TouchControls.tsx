@@ -1,14 +1,15 @@
 import { useRef } from 'react';
 import type { World } from '../../ts/world/World';
+import type { ControlScheme } from '../../ts/core/ControlSchemes';
 
 const JOYSTICK_RADIUS = 46;
 
 type Vec = { x: number; y: number };
 
-function moveCodes(scheme: 'wasd' | 'arrows'): { up: string; down: string; left: string; right: string } {
-  return scheme === 'arrows'
-    ? { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }
-    : { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' };
+function moveCodes(scheme: ControlScheme): { up: string; down: string; left: string; right: string } {
+  if (scheme === 'arrows') return { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+  if (scheme === 'ijkl') return { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' };
+  return { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' };
 }
 
 export function TouchControls({ world }: { world: World }) {

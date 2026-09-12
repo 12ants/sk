@@ -36,7 +36,8 @@ test('updates graphics, input and debug behavior through named world setters', (
   fireEvent.click(screen.getByLabelText('FXAA'));
   fireEvent.click(screen.getByLabelText('Shadows'));
   fireEvent.click(screen.getByLabelText('Pointer lock'));
-  fireEvent.change(screen.getByLabelText('Mouse sensitivity'), { target: { value: '0.7' } });
+  fireEvent.change(screen.getByLabelText('Horizontal sensitivity'), { target: { value: '0.7' } });
+  fireEvent.change(screen.getByLabelText('Vertical sensitivity'), { target: { value: '0.4' } });
   fireEvent.click(screen.getByLabelText('Physics debug'));
   fireEvent.click(screen.getByLabelText('FPS counter'));
 
@@ -44,7 +45,7 @@ test('updates graphics, input and debug behavior through named world setters', (
   expect(world.sky.csm.lights.every((light) => !light.castShadow)).toBe(true);
   expect(world.inputManager.pointerLock).toBe(false);
   expect(world.cameraOperator.sensitivity.x).toBe(0.7);
-  expect(world.cameraOperator.sensitivity.y).toBeCloseTo(0.56);
+  expect(world.cameraOperator.sensitivity.y).toBeCloseTo(0.4);
   expect(world.cannonDebugRenderer).toBeDefined();
   expect(gameUiStore.getSnapshot().statsVisible).toBe(true);
   fireEvent.click(screen.getByLabelText('Physics debug'));
@@ -60,9 +61,29 @@ test('switches control scheme and mobile mode through named world setters', () =
   expect(world.params.Control_Scheme).toBe('arrows');
   expect(world.cameraOperator.actions.forward.eventCodes).toEqual(['ArrowUp']);
 
+  fireEvent.change(screen.getByLabelText('Control scheme'), { target: { value: 'ijkl' } });
+  expect(world.cameraOperator.actions.forward.eventCodes).toEqual(['KeyI']);
+
   fireEvent.click(screen.getByLabelText('Mobile mode'));
   expect(world.params.Mobile_Mode).toBe(true);
   expect(world.params.Pointer_Lock).toBe(false);
+  world.dispose();
+});
+
+test('updates camera options and resets the view', () => {
+  const world = createTestWorld();
+  world.cameraOperator.theta = 90;
+  world.cameraOperator.phi = -20;
+  render(<GameSettings world={world} />);
+  fireEvent.change(screen.getByLabelText('Free camera speed'), { target: { value: '0.12' } });
+  fireEvent.click(screen.getByLabelText('Invert horizontal look'));
+  fireEvent.click(screen.getByLabelText('Invert vertical look'));
+  fireEvent.click(screen.getByRole('button', { name: 'Reset camera view' }));
+  expect(world.cameraOperator.movementSpeed).toBe(0.12);
+  expect(world.cameraOperator.invertLookX).toBe(true);
+  expect(world.cameraOperator.invertLook).toBe(true);
+  expect(world.cameraOperator.theta).toBe(0);
+  expect(world.cameraOperator.phi).toBe(15);
   world.dispose();
 });
 
