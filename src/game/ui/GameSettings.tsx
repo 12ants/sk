@@ -45,6 +45,18 @@ export function GameSettings({ world }: { world: World | null }) {
         <button type="button" className="game-button" onClick={() => world.resetCameraView()}>Reset camera view</button>
       </fieldset>
       <fieldset>
+        <legend>Models</legend>
+        <Toggle label="Wireframe models" checked={settings.Model_Wireframe} onChange={(value) => world.setModelWireframe(value)} />
+        <Toggle label="Model shadows" checked={settings.Model_Shadows} onChange={(value) => world.setModelShadows(value)} />
+        <Select
+          label="Texture filtering"
+          value={settings.Texture_Filtering}
+          options={[{ value: 'smooth', label: 'Smooth' }, { value: 'pixelated', label: 'Pixelated' }]}
+          onChange={(value) => world.setTextureFiltering(value as 'smooth' | 'pixelated')}
+        />
+        <Range label="Texture sharpness" value={settings.Texture_Anisotropy} min={1} max={16} onChange={(value) => world.setTextureAnisotropy(value)} />
+      </fieldset>
+      <fieldset>
         <legend>Input</legend>
         <Select
           label="Control scheme"

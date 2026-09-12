@@ -64,6 +64,10 @@ export type WorldSettings = {
 	Render_Scale: number;
 	Control_Scheme: ControlScheme;
 	Mobile_Mode: boolean;
+	Model_Wireframe: boolean;
+	Model_Shadows: boolean;
+	Texture_Filtering: 'smooth' | 'pixelated';
+	Texture_Anisotropy: number;
 };
 
 export type WorldSettingsSnapshot = Readonly<WorldSettings & { scenarioId: string | null }>;
@@ -145,6 +149,10 @@ export class World
 			Render_Scale: 1,
 			Control_Scheme: 'wasd',
 			Mobile_Mode: mobileMode,
+			Model_Wireframe: false,
+			Model_Shadows: true,
+			Texture_Filtering: 'smooth',
+			Texture_Anisotropy: 4,
 		};
 		this.publishSettings();
 		gameUiStore.setStatsVisible(false);
@@ -416,6 +424,57 @@ export class World
 		this.publishSettings();
 	}
 
+	public setModelWireframe(enabled: boolean): void
+	{
+		this.params.Model_Wireframe = enabled;
+		this.applyModelSettings(this.graphicsWorld);
+		this.publishSettings();
+	}
+
+	public setModelShadows(enabled: boolean): void
+	{
+		this.params.Model_Shadows = enabled;
+		this.applyModelSettings(this.graphicsWorld);
+		this.publishSettings();
+	}
+
+	public setTextureFiltering(filtering: 'smooth' | 'pixelated'): void
+	{
+		this.params.Texture_Filtering = filtering;
+		this.applyModelSettings(this.graphicsWorld);
+		this.publishSettings();
+	}
+
+	public setTextureAnisotropy(value: number): void
+	{
+		this.params.Texture_Anisotropy = value;
+		this.applyModelSettings(this.graphicsWorld);
+		this.publishSettings();
+	}
+
+	private applyModelSettings(root: THREE.Object3D): void
+	{
+		root.traverse((object) => {
+			if (!(object instanceof THREE.Mesh)) return;
+			object.castShadow = this.params.Model_Shadows;
+			object.receiveShadow = this.params.Model_Shadows;
+			const materials = Array.isArray(object.material) ? object.material : [object.material];
+			for (const material of materials)
+			{
+				if ('wireframe' in material) material.wireframe = this.params.Model_Wireframe;
+				for (const value of Object.values(material))
+				{
+					if (!(value instanceof THREE.Texture)) continue;
+					value.magFilter = this.params.Texture_Filtering === 'pixelated' ? THREE.NearestFilter : THREE.LinearFilter;
+					value.minFilter = this.params.Texture_Filtering === 'pixelated' ? THREE.NearestMipmapNearestFilter : THREE.LinearMipmapLinearFilter;
+					value.anisotropy = this.params.Texture_Anisotropy;
+					value.needsUpdate = true;
+				}
+				material.needsUpdate = true;
+			}
+		});
+	}
+
 	public togglePerfOverlay(): void
 	{
 		gameUiStore.setPerfVisible(!gameUiStore.getSnapshot().perfVisible);
@@ -475,6 +534,7 @@ export class World
 	{
 		if (this.isDisposed) return;
 		worldEntity.addToWorld(this);
+		this.applyModelSettings(this.graphicsWorld);
 		this.registerUpdatable(worldEntity);
 	}
 
@@ -583,6 +643,7 @@ export class World
 		});
 
 		this.graphicsWorld.add(gltf.scene);
+		this.applyModelSettings(gltf.scene);
 
 		// Launch default scenario
 		let defaultScenarioID: string;

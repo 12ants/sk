@@ -87,6 +87,28 @@ test('updates camera options and resets the view', () => {
   world.dispose();
 });
 
+test('updates model materials, textures and shadows', () => {
+  const world = createTestWorld();
+  const texture = new THREE.Texture();
+  const material = new THREE.MeshStandardMaterial({ map: texture });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+  world.graphicsWorld.add(mesh);
+  render(<GameSettings world={world} />);
+
+  fireEvent.click(screen.getByLabelText('Wireframe models'));
+  fireEvent.click(screen.getByLabelText('Model shadows'));
+  fireEvent.change(screen.getByLabelText('Texture filtering'), { target: { value: 'pixelated' } });
+  fireEvent.change(screen.getByLabelText('Texture sharpness'), { target: { value: '12' } });
+
+  expect(material.wireframe).toBe(true);
+  expect(mesh.castShadow).toBe(false);
+  expect(mesh.receiveShadow).toBe(false);
+  expect(texture.magFilter).toBe(THREE.NearestFilter);
+  expect(texture.minFilter).toBe(THREE.NearestMipmapNearestFilter);
+  expect(texture.anisotropy).toBe(12);
+  world.dispose();
+});
+
 test('preserves time and sun controls and reacts to external settings updates', () => {
   const world = createTestWorld();
   render(<GameSettings world={world} />);
